@@ -7,78 +7,63 @@
     </div>
     <div v-show="init" class="content">
       <div class="image">
-        <img src="./left.webp" :alt="PROJECT_CONFIG.title" />
+        <img src="./hutao.png" />
       </div>
       <div class="right">
-        <div class="title">{{ PROJECT_CONFIG.title }}</div>
-        <div class="desc">{{ PROJECT_CONFIG.description }}</div>
+        <div class="title">Snap Hutao</div>
+        <div class="desc">实用的开源多功能原神工具箱 🧰</div>
         <div v-if="step === 1" class="actions">
-          <div v-if="!isUpdate && !INSTALLER_CONFIG.is_uninstall" class="lnk">
+          <div v-if="!CONFIG.is_update" class="lnk">
             <Checkbox v-model="createLnk" />
             创建桌面快捷方式
           </div>
-          <div v-if="!isUpdate && !INSTALLER_CONFIG.is_uninstall" class="read">
+          <div v-if="!CONFIG.is_update" class="read">
             <Checkbox v-model="acceptEula" />
             我已阅读并同意
-            <a> 用户协议 </a>
+            <a @click="openTos"> 用户协议 </a>
           </div>
-          <div v-if="INSTALLER_CONFIG.is_uninstall" class="read">
-            <Checkbox v-model="deleteUserData" />
-            同时删除用户数据
-          </div>
-          <div class="more">
-            <span v-if="!isUpdate && !INSTALLER_CONFIG.is_uninstall">
-              安装到
-            </span>
-            <span v-if="isUpdate && !INSTALLER_CONFIG.is_uninstall">
-              更新到
-            </span>
-            <span v-if="INSTALLER_CONFIG.is_uninstall"> 卸载自 </span>
-            <a @click="changeSource">{{ source }}</a>
-          </div>
-          <button
-            v-if="!INSTALLER_CONFIG.is_uninstall"
-            class="btn btn-install"
-            @click="install"
-            :disabled="!isUpdate && !acceptEula"
-          >
-            <IconSheild
-              style="
-                width: 20px;
-                margin-right: 6px;
-                margin-left: -6px;
-                padding-top: 2px;
-              "
-              v-if="needElevate || INSTALLER_CONFIG.elevated"
-            />
-            {{ isUpdate ? '更新' : '安装' }}
-          </button>
-          <button
-            v-if="INSTALLER_CONFIG.is_uninstall"
-            class="btn btn-install"
-            @click="uninstall"
-          >
-            <IconSheild
-              style="
-                width: 20px;
-                margin-right: 6px;
-                margin-left: -6px;
-                padding-top: 2px;
-              "
-              v-if="needElevate || INSTALLER_CONFIG.elevated"
-            />
-            卸载
+          <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
+            开始
           </button>
         </div>
-        <div class="progress" v-if="step === 2">
+        <div class="login" v-if="step === 2">
+          <div class="desc">如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验</div>
+          <textarea class="textarea" v-model="homaUsername" placeholder="用户名"></textarea>
+          <textarea class="textarea textarea-password" v-model="homaPassword" placeholder="密码"></textarea>
+          <div class="btn-container">
+            <button class="btn btn-login" @click="loginSkip">跳过</button>
+            <button class="btn btn-login" @click="login"
+              :disabled="!emailRegex.test(homaUsername) || homaPassword.length === 0 || logging">
+              <div v-if="!logging">登录</div>
+              <span v-if="logging" class="fui-Spinner__spinner">
+                <span class="fui-Spinner__spinnerTail"></span>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="choose-mirror" v-if="step === 3">
+          <div class="choose-mirror-desc">
+            <div class="desc">选择一个镜像源</div>
+            <!-- <label v-for="(mirror, index) in mirrors" :key="index" class="list-item">
+              <input type="radio" v-model="selectedMirror" :value="mirror" />
+              <span>{{ mirror.mirror_name }}</span>
+            </label> -->
+            <div class="listview">
+              <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
+                :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
+                <div class="left-indicator"></div>
+                <span>{{ item.mirror_name }}</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-install" @click="install" :disabled="!selectedMirror">
+            {{ CONFIG.is_update ? '更新' : '安装' }}
+          </button>
+        </div>
+        <div class="progress" v-if="step === 4">
           <div class="step-desc">
-            <div
-              v-for="(i, a) in subStepList"
-              class="substep"
-              :class="{ done: a < subStep }"
-              v-show="a <= subStep"
-              :key="i"
-            >
+            <div v-for="(i, a) in subStepList" class="substep" :class="{ done: a < subStep }" v-show="a <= subStep"
+              :key="i">
               <span v-if="a === subStep" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail"></span>
               </span>
@@ -91,32 +76,19 @@
           <div class="current-status" v-html="current"></div>
           <div class="progress-bar" :style="{ width: `${percent}%` }"></div>
         </div>
-        <div class="finish" v-if="step === 3">
+        <div class="finish" v-if="step === 5">
           <div class="finish-text">
             <CircleSuccess />
-            {{ isUpdate ? '更新' : '安装' }}完成
+            {{ CONFIG.is_update ? '更新' : '安装' }}完成
           </div>
           <button class="btn btn-install" @click="launch">启动</button>
         </div>
-        <div class="finish" v-if="step === 4">
+        <div class="finish" v-if="step === 6">
           <div class="finish-text">
             <CircleSuccess />
             您已安装最新版本
           </div>
           <button class="btn btn-install" @click="launch">启动</button>
-        </div>
-        <div class="uninstall" v-if="step === 5">
-          <span class="fui-Spinner__spinner">
-            <span class="fui-Spinner__spinnerTail"></span>
-          </span>
-          <button class="btn btn-install" disabled>卸载中</button>
-        </div>
-        <div class="finish" v-if="step === 6">
-          <div class="finish-text">
-            <CircleSuccess />
-            卸载成功
-          </div>
-          <button class="btn btn-install" @click="exit">关闭</button>
         </div>
       </div>
     </div>
@@ -127,6 +99,7 @@
 .main {
   min-height: 100vh;
 }
+
 .init-loading {
   height: 100vh;
   display: flex;
@@ -141,6 +114,7 @@
   height: 40px;
   --fui-Spinner--strokeWidth: 4px;
 }
+
 .content {
   display: flex;
   min-height: 100vh;
@@ -157,13 +131,35 @@
   opacity: 0.8;
   padding-left: 10px;
   padding-bottom: 2px;
+  line-height: 1.4;
+}
+
+.textarea {
+  width: 100%;
+  height: 32px;
+  padding: 6px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 12px;
+  resize: none;
+  opacity: 0.8;
+  margin-left: 10px;
+  margin-top: 4px;
+  font-family:
+    Consolas,
+    'Courier New',
+    Microsoft Yahei;
+}
+
+.textarea-password {
+  -webkit-text-security: disc;
 }
 
 .image {
-  min-width: 180px;
-  width: 180px;
+  min-width: 200px;
+  width: 200px;
   box-sizing: border-box;
-  padding: 12px 0 12px 12px;
+  padding: 6px 6px 6px 6px;
 
   img {
     width: 100%;
@@ -188,6 +184,29 @@
   padding: 2px 10px 6px;
 }
 
+.btn-container {
+  display: flex;
+  position: absolute;
+  height: 40px;
+  width: 248px;
+  margin-left: 10px;
+  bottom: 20px;
+  gap: 10px;
+
+  .fui-Spinner__spinner {
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+}
+
+.btn-login {
+  height: 40px;
+  width: 140px;
+  bottom: 20px;
+  right: 8px;
+}
+
 .btn-install {
   height: 40px;
   width: 140px;
@@ -196,11 +215,12 @@
   right: 8px;
 }
 
-.actions {
+.actions,
+.login {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 16px;
+  padding-top: 8px;
 }
 
 .read,
@@ -244,6 +264,7 @@
   text-align: center;
   opacity: 0.9;
   width: 100%;
+  margin-top: 20px;
   padding: 38px 10px;
   font-size: 18px;
   display: flex;
@@ -263,8 +284,16 @@
   height: 4px;
   background: var(--colorBrandForeground1);
   transition: width 0.1s;
-  transition-timing-function: cubic-bezier(0.33, 0, 0.67, 1); /* easeInOut */
+  transition-timing-function: cubic-bezier(0.33, 0, 0.67, 1);
+  /* easeInOut */
   width: 30%;
+}
+
+.choose-mirror-desc {
+  padding: 14px 0px;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .step-desc {
@@ -309,18 +338,47 @@
     'Courier New',
     Microsoft Yahei;
 }
-.uninstall {
-  height: 117px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+
+.listview {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+  gap: 4px;
 }
 
-.uninstall .fui-Spinner__spinner {
-  width: 40px;
-  height: 40px;
-  display: block;
-  --fui-Spinner--strokeWidth: 4px;
+.listview-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  height: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-radius: 4px;
+  /* 圆角 */
+}
+
+.listview-item:hover {
+  background-color: #2d2d2d;
+}
+
+.listview-item.selected {
+  background-color: #2d2d2d;
+}
+
+.left-indicator {
+  width: 4px;
+  height: 0px;
+  opacity: 0;
+  background-color: #0f6cbd;
+  margin-right: 8px;
+  border-radius: 2px;
+  transition: height 0.1s ease,
+    opacity 0.1s ease;
+}
+
+.listview-item.selected .left-indicator {
+  height: 16px;
+  opacity: 1;
 }
 </style>
 <style>
@@ -378,794 +436,170 @@
   min-width: 36px;
 }
 </style>
-<script lang="ts" setup>
-import { onMounted, reactive, ref } from 'vue';
-import { mapLimit } from 'async';
+
+<script setup lang="ts">
+import { onMounted, reactive, ref } from "vue";
+import { getCurrentWindow, invoke, sep } from './tauri';
 import Checkbox from './Checkbox.vue';
 import CircleSuccess from './CircleSuccess.vue';
-import { getCurrentWindow, invoke, sep } from './tauri';
-import { getDfsMetadata, runDfsDownload } from './dfs';
-import {
-  ipcCheckLocalFiles,
-  ipcCreateLnk,
-  ipcCreateUninstaller,
-  ipcFindProcessByName,
-  ipcInstallRuntime,
-  ipcKillProcess,
-  ipcPatchInstaller,
-  ipcRmList,
-  ipcRunUninstall,
-  ipcWriteRegistry,
-  ipPrepare,
-  log,
-  sendInsight,
-} from './api/ipc';
-import IconSheild from './IconSheild.vue';
-import { version_compare } from './utils/version';
-import { getRuntimeName } from './consts';
+import { fetchPatchData, IsCdnAvailable, LoadToken, LoginHomaPassport } from "./api";
 
 const init = ref(false);
 
 const subStepList: ReadonlyArray<string> = [
-  '获取最新版本',
-  '校验更新内容',
-  '下载和解压文件',
+  '下载安装包',
   '准备运行环境',
+  '部署文件',
 ];
 
-const isUpdate = ref<boolean>(false);
 const acceptEula = ref<boolean>(true);
 const createLnk = ref<boolean>(true);
-const deleteUserData = ref<boolean>(false);
+/**
+ * 1: EULA
+ * 2: Login
+ * 3: Choose Mirror
+ * 4: Downloading
+ * 5: Finish
+ * 6: Already Installed
+ */
 const step = ref<number>(1);
 const subStep = ref<number>(0);
-const needElevate = ref(true);
 
 const current = ref<string>('');
 const percent = ref<number>(0);
-const source = ref<string>('');
+const homaUsername = ref<string>('');
+const homaPassword = ref<string>('');
 const progressInterval = ref<number>(0);
 
-const PROJECT_CONFIG: ProjectConfig = reactive({
-  source: '',
-  appName: 'Kachina',
-  publisher: 'YuehaiTeam',
-  regName: 'Kachina',
-  exeName: 'inst.exe',
-  uninstallName: 'uninst.exe',
-  updaterName: 'update.exe',
-  programFilesPath: 'Kachina',
-  userDataPath: [],
-  extraUninstallPath: [],
-  title: 'Title',
-  description: 'description',
-  windowTitle: ' ',
-  uacStrategy: 'prefer-admin',
+const mirrors = ref<GenericPatchPackageMirror[]>([]);
+const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
+const isCdnAvailable = ref<boolean>(false);
+const logging = ref<boolean>(false);
+
+const CONFIG: Config = reactive({
+  is_update: false,
+  curr_version: null,
+  token: null,
 });
 
-const INSTALLER_CONFIG: InstallerConfig = reactive({
-  install_path: '',
-  install_path_exists: false,
-  install_path_source: 'DEFAULT',
-  is_uninstall: false,
-  embedded_config: null,
-  enbedded_metadata: null,
-  embedded_files: [],
-  embedded_index: [],
-  exe_path: '',
-  args: {
-    target: null,
-    uninstall: false,
-    non_interactive: false,
-    silent: false,
-    online: false,
-  },
-  elevated: false,
-});
+const emailRegex = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
 
-const getInsightBase = () => {
-  const qs = new URLSearchParams();
-  if (INSTALLER_CONFIG.args.non_interactive) {
-    qs.set('non_interactive', '1');
-  }
-  if (INSTALLER_CONFIG.args.silent) {
-    qs.set('silent', '1');
-  }
-  if (INSTALLER_CONFIG.args.uninstall) {
-    qs.set('uninstall', '1');
-  }
-  if (INSTALLER_CONFIG.args.online) {
-    qs.set('online', '1');
-  }
-  if ((INSTALLER_CONFIG.embedded_index?.length || 0) > 0) {
-    qs.set('pack', '1');
-  }
-  return `/${PROJECT_CONFIG.appName}?${qs.toString()}`;
-};
-
-async function getSource(scan: boolean): Promise<InstallerConfig> {
-  return await invoke<InstallerConfig>('get_installer_config', {
-    scanExe: scan,
-  });
+async function openTos(): Promise<void> {
+  await invoke('open_tos');
 }
 
-async function runInstall(): Promise<void> {
+async function start(): Promise<void> {
+  if (CONFIG.token) {
+    LoadToken(CONFIG.token);
+    if (await IsCdnAvailable()) {
+      isCdnAvailable.value = true;
+      step.value = 4;
+    } else {
+      step.value = 3;
+    }
+    return;
+  }
+
   step.value = 2;
-  let latest_meta = INSTALLER_CONFIG.enbedded_metadata;
-  let online_meta: InvokeGetDfsMetadataRes | null = null;
-  try {
-    online_meta = await getDfsMetadata(PROJECT_CONFIG.source);
-  } catch (e) {
-    log(e);
-  }
-  if (!latest_meta && !online_meta) {
-    await error('获取更新信息失败，请检查网络连接');
-    step.value = 1;
+}
+
+async function login(): Promise<void> {
+  logging.value = true;
+  if (!await LoginHomaPassport(homaUsername.value, homaPassword.value)) {
+    logging.value = false;
     return;
-  } else if (!latest_meta) {
-    latest_meta = online_meta;
-    log('Local meta not found, use online meta');
-  } else if (
-    online_meta &&
-    online_meta.tag_name !== latest_meta.tag_name &&
-    version_compare(online_meta.tag_name, latest_meta.tag_name) > 0
-  ) {
-    log('Version update detected');
-    if (
-      !INSTALLER_CONFIG.args.non_interactive &&
-      !INSTALLER_CONFIG.args.silent &&
-      ((isUpdate.value &&
-        (INSTALLER_CONFIG.embedded_index?.length || 0) <= 0) ||
-        (await confirm('当前安装包不是最新版本，是否直接安装最新版本？')))
-    ) {
-      latest_meta = online_meta;
-    } else {
-      log('Has version update but use local meta');
-    }
-  } else {
-    log('Local meta found, use local meta');
   }
-  latest_meta = latest_meta as InvokeGetDfsMetadataRes;
-  if (
-    isUpdate.value &&
-    latest_meta.installer &&
-    !INSTALLER_CONFIG.enbedded_metadata
-  ) {
-    if (
-      !latest_meta.hashed.find(
-        (e) => e.file_name === PROJECT_CONFIG.updaterName,
-      )
-    ) {
-      const installerMeta: DfsMetadataHashInfo = {
-        file_name: PROJECT_CONFIG.updaterName,
-        size: latest_meta.installer.size,
-        md5: latest_meta.installer.md5,
-        xxh: latest_meta.installer.xxh,
-        installer: true,
-      };
-      latest_meta.hashed.push(installerMeta);
-    }
-  }
-  await ipPrepare(needElevate.value);
-  sendInsight(
-    getInsightBase(),
-    `${isUpdate.value ? 'update' : 'install'}/${INSTALLER_CONFIG.embedded_index?.length ? 'packed/' : ''}${latest_meta?.tag_name}`,
-  );
-  const target_exe_path = `${source.value}${sep()}${PROJECT_CONFIG.exeName}`;
-  const runningExes =
-    (await ipcFindProcessByName(PROJECT_CONFIG.exeName).catch(log)) || [];
-  if (
-    runningExes.find(
-      (e) =>
-        e[1].toLowerCase().replace(/\\/g, '/') ===
-        target_exe_path.toLowerCase().replace(/\\/g, '/'),
-    )
-  ) {
-    const result =
-      INSTALLER_CONFIG.args.non_interactive ||
-      INSTALLER_CONFIG.args.silent ||
-      (await confirm(
-        `检测到${PROJECT_CONFIG.appName}正在运行，是否结束进程并继续安装？`,
-        '提示',
-      ));
-    if (!result) {
-      step.value = 1;
-      return;
-    } else {
-      try {
-        await Promise.all(
-          runningExes.map((e) => ipcKillProcess(e[0], needElevate.value)),
-        );
-      } catch (e) {
-        await Promise.all(runningExes.map((e) => ipcKillProcess(e[0], true)));
-      }
-      return runInstall();
-    }
-  }
-  let hashKey = '';
-  if (latest_meta.hashed.every((e) => e.md5)) {
-    hashKey = 'md5';
-  } else if (latest_meta.hashed.every((e) => e.xxh)) {
-    hashKey = 'xxh';
-  } else {
-    throw new Error('更新服务端配置有误，不支持的哈希算法');
-  }
-  subStep.value = 1;
-  percent.value = 5;
-  const local_meta = (
-    await ipcCheckLocalFiles(
-      {
-        source: source.value,
-        hash_algorithm: hashKey,
-        file_list: latest_meta.hashed.map((e) => e.file_name),
-      },
-      ({ payload }) => {
-        const [currentValue, total] = payload;
-        current.value = `${currentValue} / ${total}`;
-        percent.value = 5 + (currentValue / total) * 15;
-      },
-      needElevate.value,
-    )
-  ).map((e) => {
-    return {
-      ...e,
-      file_name: e.file_name.replace(source.value, ''),
-    };
-  });
-  current.value = '校验本地文件……';
-  const diff_files: Array<DfsUpdateTask> = [];
-  const strip_first_slash = (s: string) => {
-    let ss = s.replace(/\\/g, '/');
-    if (ss.startsWith('/')) return ss.slice(1);
-    return ss;
-  };
-  for (const item of latest_meta.hashed) {
-    const local = local_meta.find(
-      (e) =>
-        strip_first_slash(e.file_name.toLowerCase()) ===
-        strip_first_slash(item.file_name.toLowerCase()),
-    );
-    if (!local || local.hash !== item[hashKey as DfsMetadataHashType]) {
-      let patch = latest_meta.patches?.find(
-        (e) =>
-          e.from[hashKey as DfsMetadataHashType] === local?.hash &&
-          e.to[hashKey as DfsMetadataHashType] ===
-            item[hashKey as DfsMetadataHashType],
-      );
-      let lpatch = latest_meta.patches?.find((e) =>
-        INSTALLER_CONFIG.embedded_files?.some(
-          (em) => em.name === e.from[hashKey as DfsMetadataHashType],
-        ),
-      );
-      diff_files.push({
-        ...item,
-        patch,
-        lpatch,
-        downloaded: 0,
-        running: false,
-        old_hash: local?.hash,
-        unwritable: local?.unwritable || false,
-      });
-    }
-  }
-  if (diff_files.length === 0) {
-    percent.value = 100;
+  if (await IsCdnAvailable()) {
+    isCdnAvailable.value = true;
     step.value = 4;
-    await finishInstall(latest_meta);
-    return;
+  } else {
+    await invoke('message_dialog', {
+      title: '无 CDN 权限',
+      message: '未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包',
+    })
+    step.value = 3;
   }
-  if (diff_files.find((e) => e.unwritable)) {
-    if (
-      !INSTALLER_CONFIG.args.non_interactive &&
-      !INSTALLER_CONFIG.args.silent &&
-      !(await confirm('检测到部分文件被占用，继续安装可能无法成功，是否继续？'))
-    ) {
-      step.value = 1;
-      return;
-    }
-  }
-  console.log('Files to install:', diff_files);
-  subStep.value = 2;
-  current.value = '准备下载……';
-  const total_size = diff_files.reduce((acc, cur) => acc + cur.size, 0);
-  let stat: InstallStat = {
-    speedLastSize: 0,
-    lastTime: performance.now(),
-    speed: 0,
-  };
-  progressInterval.value = setInterval(() => {
-    const now = performance.now();
-    const time_diff = now - stat.lastTime;
-    const downloadedTotalSize = diff_files.reduce(
-      (acc, cur) => acc + cur.downloaded,
-      0,
-    );
-    if (time_diff > 100) {
-      stat.speed = (downloadedTotalSize - stat.speedLastSize) / time_diff;
-      stat.speedLastSize = downloadedTotalSize;
-      stat.lastTime = now;
-    }
-    const speed = formatSize(stat.speed * 1000);
-    const downloaded = formatSize(downloadedTotalSize);
-    const total = formatSize(total_size);
-    const runningTasks = diff_files
-      .filter((e) => e.running)
-      .map((e) => `${basename(e.file_name)} ${formatSize(e.downloaded)}`);
-    current.value = `
-      <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
-      <div class="d-single-list">
-        <div class="d-single">
-          ${Object.values(runningTasks).join('</div><div class="d-single">')}
-        </div>
-      </div>
-    `;
-    percent.value = 20 + (downloadedTotalSize / total_size) * 80;
-  }, 30);
-  await mapLimit(diff_files, 6, async (item: (typeof diff_files)[0]) => {
-    let hasError = false;
-    for (let i = 0; i < 3; i++) {
-      try {
-        if (item.installer) {
-          try {
-            // 自更新前后都清除下载的安装器里的index，尽量保证hash一致性
-            await ipcPatchInstaller(
-              `${source.value}${sep()}${PROJECT_CONFIG.updaterName}`,
-              needElevate.value,
-            );
-          } catch (e) {
-            log(e);
-          }
-        }
-        await runDfsDownload(
-          PROJECT_CONFIG.source,
-          INSTALLER_CONFIG.embedded_files || [],
-          source.value,
-          hashKey as DfsMetadataHashType,
-          item,
-          hasError,
-          hasError || INSTALLER_CONFIG.args.online,
-          needElevate.value,
-        );
-        if (item.installer) {
-          try {
-            // 清除下载的安装器里的index
-            await ipcPatchInstaller(
-              `${source.value}${sep()}${PROJECT_CONFIG.updaterName}`,
-              needElevate.value,
-            );
-          } catch (e) {
-            log(e);
-          }
-        }
-        break;
-      } catch (e) {
-        hasError = true;
-        log(e);
-        if (i === 2) {
-          await error(`释放文件${item.file_name}失败: ${e}`, '出错了');
-          throw e;
-        }
-      }
-    }
-  });
-  clearInterval(progressInterval.value);
-  if (
-    latest_meta.deletes &&
-    Array.isArray(latest_meta.deletes) &&
-    latest_meta.deletes.length > 0
-  ) {
-    current.value = '删除旧版残留文件……';
-    try {
-      await ipcRmList(
-        latest_meta.deletes.map((e) => `${source.value}${sep()}${e}`),
-        needElevate.value,
-      );
-    } catch (e) {
-      log(e);
-    }
-  }
-  if (PROJECT_CONFIG.runtimes) {
-    log('latest_meta.runtimes', PROJECT_CONFIG.runtimes);
-    subStep.value = 3;
-    current.value = '安装运行库……';
-    for (const tag of PROJECT_CONFIG.runtimes) {
-      log(`Installing runtime: ${tag}`);
-      current.value = `安装${getRuntimeName(tag)}……`;
-      try {
-        await ipcInstallRuntime(
-          tag,
-          ({ payload }) => {
-            const currentSize = formatSize(payload[0]);
-            const targetSize = payload[1] ? formatSize(payload[1]) : '';
-            if (payload[0] >= payload[1] - 1) {
-              current.value = `安装 ${getRuntimeName(tag)} ……`;
-            } else {
-              current.value = `下载 ${getRuntimeName(tag)} ……<br>${currentSize}${targetSize ? ` / ${targetSize}` : ''}`;
-            }
-          },
-          needElevate.value,
-        );
-      } catch (e) {
-        log(e);
-        await error(
-          `安装${getRuntimeName(tag)}失败: ${e}，请手动安装`,
-          '出错了',
-        );
-      }
-    }
-  }
+  logging.value = false;
+}
 
-  current.value = '很快就好……';
-  await finishInstall(latest_meta);
-  current.value = '安装完成';
+async function loginSkip(): Promise<void> {
   step.value = 3;
-  percent.value = 100;
-}
-
-async function getLnkPath() {
-  const [program, desktop] = await invoke<InvokeGetDirsRes>('get_dirs', {
-    elevated: needElevate.value,
-  });
-  return {
-    programFolder: `${program}${sep()}${PROJECT_CONFIG.appName}`,
-    program: `${program}${sep()}${PROJECT_CONFIG.appName}${sep()}${PROJECT_CONFIG.appName}.lnk`,
-    desktop: `${desktop}${sep()}${PROJECT_CONFIG.appName}.lnk`,
-    uninstall: `${program}${sep()}${PROJECT_CONFIG.appName}${sep()}卸载${PROJECT_CONFIG.appName}.lnk`,
-  };
-}
-
-async function finishInstall(
-  latest_meta: InvokeGetDfsMetadataRes,
-): Promise<void> {
-  sendInsight(getInsightBase(), 'finish');
-  const { program, desktop, uninstall } = await getLnkPath();
-  const exePath = `${source.value}${sep()}${PROJECT_CONFIG.exeName}`;
-  if (createLnk.value && !isUpdate.value) {
-    await ipcCreateLnk(exePath, desktop, needElevate.value);
-  }
-  if (!isUpdate.value) {
-    await ipcCreateLnk(exePath, program, needElevate.value).catch(log);
-  }
-  if (
-    !isUpdate.value ||
-    INSTALLER_CONFIG.install_path_source.startsWith('REG')
-  ) {
-    try {
-      await ipcCreateUninstaller(
-        source.value,
-        PROJECT_CONFIG.uninstallName,
-        PROJECT_CONFIG.updaterName,
-        needElevate.value,
-      );
-    } catch (e) {
-      error(`创建卸载程序失败: ${e}`, '出错了');
-      log(e);
-    }
-    try {
-      await ipcWriteRegistry(
-        {
-          reg_name: PROJECT_CONFIG.regName,
-          name: PROJECT_CONFIG.appName,
-          version: latest_meta.tag_name || '0.0',
-          exe: `${source.value}${sep()}${PROJECT_CONFIG.exeName}`,
-          source: source.value,
-          uninstaller: `${source.value}${sep()}${PROJECT_CONFIG.uninstallName}`,
-          metadata: JSON.stringify(latest_meta),
-          size: latest_meta.hashed.reduce((acc, cur) => acc + cur.size, 0),
-          publisher: PROJECT_CONFIG.publisher,
-        },
-        needElevate.value,
-      );
-    } catch (e) {
-      error(`写入注册表失败: ${e}`, '出错了');
-      log(e);
-    }
-    await ipcCreateLnk(
-      `${source.value}${sep()}${PROJECT_CONFIG.uninstallName}`,
-      uninstall,
-      needElevate.value,
-    ).catch(log);
-  }
-  if (INSTALLER_CONFIG.args.silent) {
-    const win = getCurrentWindow();
-    win.close();
-  }
 }
 
 async function install(): Promise<void> {
-  try {
-    await runInstall();
-  } catch (e) {
-    log(e);
-    const errstr =
-      e instanceof Error
-        ? e.stack || e.toString()
-        : typeof e === 'string'
-          ? e
-          : JSON.stringify(e);
-    await error(errstr);
-    await sendInsight(getInsightBase(), 'error', { error: errstr });
-    step.value = 1;
-    subStep.value = 0;
-    percent.value = 0;
-    current.value = '';
-    clearInterval(progressInterval.value);
-    progressInterval.value = 0;
-  }
+
+}
+
+async function launch(): Promise<void> {
+  await invoke('launch_and_exit');
+
+}
+
+function onItemClick(item: GenericPatchPackageMirror): void {
+  selectedMirror.value = item;
 }
 
 onMounted(async () => {
-  try {
-    const win = getCurrentWindow();
-    const ps = [];
-    ps.push(win.setTitle(' '));
-    if (process.env.NODE_ENV === 'development') {
-      ps.push(win.show());
-    }
-    let rsrc = await getSource(false);
-    Object.assign(INSTALLER_CONFIG, rsrc);
-    if (!rsrc.args.silent) {
-      await win.show();
-    }
-    await Promise.all(ps);
-    rsrc = await getSource(true);
-    Object.assign(INSTALLER_CONFIG, rsrc);
-    log('INSTALLER_CONFIG: ', rsrc);
-    source.value =
-      INSTALLER_CONFIG.args.target || INSTALLER_CONFIG.install_path;
-    const seldir = await invoke<InvokeSelectDirRes>('select_dir', {
-      exeName: PROJECT_CONFIG.exeName,
-      silent: true,
-      path: source.value,
-    });
-    if (seldir) {
-      setUacByState(seldir.state, PROJECT_CONFIG.uacStrategy);
-    }
-    if (INSTALLER_CONFIG.embedded_config) {
-      Object.assign(PROJECT_CONFIG, INSTALLER_CONFIG.embedded_config);
-      if (process.env.NODE_ENV === 'development') {
-        if (
-          INSTALLER_CONFIG.embedded_files &&
-          INSTALLER_CONFIG.embedded_files.length > 0 &&
-          !INSTALLER_CONFIG.embedded_files.find((e) => e.name === '\0CONFIG')
-        ) {
-          error('打包错误，请确保配置文件被正确打包');
-        }
-      }
-    } else if (process.env.NODE_ENV === 'development') {
-      error('未找到配置文件，请将配置文件放在exe同目录下');
-    } else {
-      await error('安装包损坏，请重新下载');
-      const win = getCurrentWindow();
-      win.close();
-      return;
-    }
-    if (INSTALLER_CONFIG.embedded_index && INSTALLER_CONFIG.embedded_files) {
-      let hasWrongIndex = false;
-      for (const i of INSTALLER_CONFIG.embedded_index) {
-        const target = INSTALLER_CONFIG.embedded_files.find(
-          (e) => e.name === i.name,
-        );
-        if (!target) {
-          log('Unfound index', target, i);
-          hasWrongIndex = true;
-          continue;
-        }
-        if (target.offset !== i.offset || target.raw_offset !== i.raw_offset) {
-          log('Wrong index: pack=', target, 'index=', i);
-          hasWrongIndex = true;
-        }
-      }
-      if (hasWrongIndex) {
-        if (process.env.NODE_ENV === 'development') {
-          error('打包错误，请确保索引文件正确');
-        } else {
-          await error('安装包损坏，请重新下载');
-          const win = getCurrentWindow();
-          win.close();
-          return;
-        }
-      }
-    }
-    sendInsight(getInsightBase());
-    if (INSTALLER_CONFIG.install_path_exists) isUpdate.value = true;
-    await win.setTitle(PROJECT_CONFIG.windowTitle);
-    INSTALLER_CONFIG.is_uninstall =
-      INSTALLER_CONFIG.is_uninstall || INSTALLER_CONFIG.args.uninstall;
-    if (INSTALLER_CONFIG.is_uninstall) {
-      const uninstallConfig = await invoke(
-        'read_uninstall_metadata',
-        PROJECT_CONFIG,
-      ).catch(log);
-      log('UNINSTALL_METADATA: ', uninstallConfig);
-      if (!uninstallConfig) {
-        await error('未找到卸载配置文件，请重新安装后再卸载');
-        if (process.env.NODE_ENV !== 'development') {
-          const win = getCurrentWindow();
-          win.close();
-        }
-        return;
-      }
-    }
-    init.value = true;
-    if (INSTALLER_CONFIG.args.silent || INSTALLER_CONFIG.args.non_interactive) {
-      if (INSTALLER_CONFIG.args.uninstall || INSTALLER_CONFIG.is_uninstall) {
-        uninstall();
-      } else {
-        install();
-      }
-    }
-  } catch (e) {
-    log(e);
-    if (e instanceof Error)
-      await error(e.stack || e.toString(), '安装程序初始化失败');
-    else
-      await error(
-        typeof e === 'string' ? e : JSON.stringify(e),
-        '安装程序初始化失败',
-      );
-    if (process.env.NODE_ENV !== 'development') {
-      const win = getCurrentWindow();
-      win.close();
-    }
-  }
-});
-
-function formatSize(size: number): string {
-  if (size < 1024) {
-    return `${size.toFixed(2)} B`;
-  }
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(2)} KB`;
-  }
-  return `${(size / 1024 / 1024).toFixed(2)} MB`;
-}
-
-function basename(path: string): string {
-  return path.replace(/\\/g, '/').split('/').pop() as string;
-}
-
-async function launch() {
-  const mainExe = PROJECT_CONFIG.exeName;
-  const fullPath = `${source.value}${sep()}${mainExe}`;
-  await invoke('launch_and_exit', { path: fullPath });
-}
-async function exit() {
   const win = getCurrentWindow();
-  win.close();
-}
+  await win.setTitle('Snap Hutao Deployment');
+  await win.show();
 
-async function changeSource() {
-  try {
-    const seldir = await invoke<InvokeSelectDirRes>('select_dir', {
-      path: source.value,
-      exeName: PROJECT_CONFIG.exeName,
-      silent: false,
-    });
-    if (seldir === null) return;
-    log('SELECT_DIR: ', seldir);
-    setUacByState(seldir.state, PROJECT_CONFIG.uacStrategy);
-    isUpdate.value = seldir.upgrade;
-    if (!seldir.empty && !seldir.upgrade) {
-      const isDriveRoot = seldir.path.replace(/\\/g, '/').match(/^\w:\/$/);
-      const confirmRes =
-        isDriveRoot ||
-        (await confirm(
-          '您选择的目录不为空，是否创建新文件夹再安装？选【否】将可能影响原有数据。',
-          '提示',
-        ));
-      if (confirmRes) {
-        source.value =
-          `${seldir.path}${sep()}${PROJECT_CONFIG.appName}`.replace(
-            /\\\\/g,
-            '\\',
-          );
-      } else {
-        source.value = seldir.path;
-      }
-    } else {
-      source.value = seldir.path;
-    }
-  } catch (e) {
-    if (e instanceof Error) await error(e.stack || e.toString());
-    else await error(JSON.stringify(e));
-    throw e;
-  }
-}
+  let config = await invoke<Config>('get_config');
+  Object.assign(CONFIG, config);
+  let patch_data = await fetchPatchData();
+  mirrors.value = patch_data.mirrors;
 
-async function error(message: string, title = '出错了'): Promise<void> {
-  await invoke('error_dialog', {
-    message: message.replace(new RegExp(location.origin, 'g'), ''),
-    title,
-  });
-  if (INSTALLER_CONFIG.args.silent) {
-    const win = getCurrentWindow();
-    win.close();
+  if (config.is_update && config.curr_version) {
+    let local = Version.parse(config.curr_version);
+    let remote = Version.parse(patch_data.version);
+    if (true || remote.compare(local) <= 0) {
+      step.value = 6;
+    }
   }
-}
-async function confirm(message: string, title = '提示'): Promise<boolean> {
-  return await invoke<boolean>('confirm_dialog', { message, title });
-}
-async function uninstall() {
-  step.value = 5;
-  sendInsight(getInsightBase(), 'uninstall');
-  try {
-    const uninstallConfig = (await invoke(
-      'read_uninstall_metadata',
-      PROJECT_CONFIG,
-    )) as InvokeGetDfsMetadataRes;
-    if (!uninstallConfig) {
-      throw new Error('未找到卸载配置文件，请重新安装后再卸载');
+
+  init.value = true;
+})
+
+class Version {
+  major: number;
+  minor: number;
+  build: number;
+  revision: number;
+
+  constructor(
+    major: number,
+    minor: number,
+    build: number | undefined,
+    revision: number | undefined
+  ) {
+    this.major = major;
+    this.minor = minor;
+    this.build = build ?? 0;
+    this.revision = revision ?? 0;
+  }
+
+  toString() {
+    return `${this.major}.${this.minor}.${this.build}.${this.revision}`;
+  }
+
+  static parse(version: string) {
+    const [major, minor, build, revision] = version.split(".").map(Number);
+    return new Version(major, minor, build, revision);
+  }
+
+  compare(other: Version) {
+    if (this.major !== other.major) {
+      return this.major - other.major;
     }
-    await ipPrepare(needElevate.value);
-    const { programFolder, desktop } = await getLnkPath();
-    await ipcRunUninstall(
-      {
-        source: INSTALLER_CONFIG.install_path,
-        files: [
-          ...uninstallConfig.hashed.map((e) => e.file_name),
-          PROJECT_CONFIG.updaterName,
-        ],
-        user_data_path: deleteUserData.value
-          ? PROJECT_CONFIG.userDataPath.map(replacePathEnvirables)
-          : [],
-        extra_uninstall_path: [
-          ...(PROJECT_CONFIG.extraUninstallPath?.map(replacePathEnvirables) ||
-            []),
-          programFolder,
-          desktop,
-        ],
-        reg_name: PROJECT_CONFIG.regName,
-        uninstall_name: PROJECT_CONFIG.uninstallName,
-      },
-      needElevate.value,
-    );
-    step.value = 6;
-    if (INSTALLER_CONFIG.args.silent) {
-      const win = getCurrentWindow();
-      win.close();
+    if (this.minor !== other.minor) {
+      return this.minor - other.minor;
     }
-  } catch (e) {
-    log(e);
-    const errstr =
-      e instanceof Error
-        ? e.stack || e.toString()
-        : typeof e === 'string'
-          ? e
-          : JSON.stringify(e);
-    await error(errstr);
-    await sendInsight(getInsightBase(), 'error', { error: errstr });
-    step.value = 1;
+    if (this.build !== other.build) {
+      return this.build - other.build;
+    }
+    return this.revision - other.revision;
   }
 }
 
-function tplReplace(template: string, data: Record<string, string>): string {
-  const regex = /\${(.*?)}/g;
-  return template.replace(regex, (_match, key) => {
-    return typeof data[key] !== 'undefined' ? data[key] : '';
-  });
-}
-function replacePathEnvirables(path: string): string {
-  return tplReplace(path, {
-    INSTALL_PATH: INSTALLER_CONFIG.install_path,
-    APP_NAME: PROJECT_CONFIG.appName,
-  });
-}
-function setUacByState(
-  state: 'Unwritable' | 'Writable' | 'Private',
-  uacStrategy: ProjectConfig['uacStrategy'],
-) {
-  needElevate.value = false;
-  switch (uacStrategy) {
-    case 'force':
-      needElevate.value = true;
-      break;
-    case 'prefer-admin':
-      needElevate.value = state !== 'Private';
-      break;
-    case 'prefer-user':
-      needElevate.value = state === 'Unwritable';
-      break;
-  }
-}
+
 </script>

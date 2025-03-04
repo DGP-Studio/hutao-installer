@@ -1,23 +1,35 @@
 [package]
-name = "kachina-installer"
+name = "hutao-installer"
 version = "0.1.0"
-description = "Unified installer and upgrader"
-authors = ["YuehaiTeam"]
+description = "Refreshed Snap Hutao Installer"
+authors = ["DGP-Studio"]
 edition = "2021"
-default-run = "kachina-installer"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", default-features = false, features = [
-    "wry",
-    "devtools",
-] }
+tauri = { version = "2", features = [] }
 tauri-utils = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-async-compression = { version = "0.4", features = ["tokio", "zstd", "zstdmt"] }
+cppwinrt = "0.2.1"
+windows = { version = "0.58", features = [
+    "Win32_System_Console",
+    "Win32_System_LibraryLoader",
+    "Win32_UI",
+    "Win32_UI_Controls",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Threading",
+    "Win32_Security",
+    "Win32_UI_Shell",
+    "Win32_System_Registry",
+    "Management",
+    "Management_Deployment",
+    "ApplicationModel",
+    "Foundation_Collections"
+] }
+tokio-util = { version = "0.7", features = ["io-util"] }
 tokio = { version = "1", features = [
     "rt",
     "rt-multi-thread",
@@ -28,7 +40,10 @@ tokio = { version = "1", features = [
     "macros",
     "net",
 ] }
-chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
+clap = { version = "4.5.24", features = ["derive"] }
+nt_version = "0.1"
+lazy_static = "1.5"
+num_cpus = "1.16.0"
 reqwest = { version = "0.12", default-features = false, features = [
     "http2",
     "json",
@@ -38,49 +53,21 @@ reqwest = { version = "0.12", default-features = false, features = [
     "gzip",
     "zstd",
 ] }
-futures = "0.3"
-tokio-util = { version = "0.7", features = ["io-util"] }
-async-walkdir = "2.0"
-winreg = "0.52"
-windows = { version = "0.58", features = [
-    "Win32_System_Console",
-    "Win32_Security",
-    "Win32_System_Registry",
-    "Win32_Security_Authorization",
-    "Security",
-    "Win32_System_ProcessStatus",
-    "Win32_System_Diagnostics_ToolHelp",
-] }
 rfd = { version = "0.15", default-features = false, features = [
     "tokio",
     "common-controls-v6",
 ] }
-nt_version = "0.1"
-lazy_static = "1.5"
-open = { version = "5.3.1", features = ["shellexecute-on-windows"] }
-mslnk = "=0.1"
-twox-hash = "2.1.0"
-pin-project = "1.1.7"
 fmmap = { version = "0.3", features = ["tokio-async"] }
-clap = { version = "4.5.24", features = ["derive"] }
-chrono = "0.4.39"
-dark-light = "2.0.0"
-uuid = { version = "1.12.0", features = ["v4"] }
-hpatch-sys = { path = "./libs/hpatch-sys" }
-hdiff-sys = { path = "./libs/hdiff-sys" }
-ignore = "0.4.23"
-num_cpus = "1.16.0"
 indicatif = { version = "0.17.9", features = ["tokio"] }
-console = "0.15.10"
-rcedit = { version = "0.1.0", git = "https://github.com/Devolutions/rcedit-rs.git" }
+dark-light = "2.0.0"
+pin-project = "1.1.7"
+chksum-sha2-256 = { version = "0.1", features = ["async-runtime-tokio"] }
+mslnk = "=0.1"
+webbrowser = "0.8"
 
 [[bin]]
-name = "kachina-installer"
+name = "hutao-installer"
 path = "src/main.rs"
-
-[[bin]]
-name = "kachina-builder"
-path = "src/builder/main.rs"
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.

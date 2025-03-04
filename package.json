@@ -1,29 +1,28 @@
 {
-  "name": "kachina-installer",
+  "name": "hutao-installer",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "tauri dev --exit-on-panic",
-    "build": "cross-env STATIC_VCRUNTIME=false tauri build && cd src-tauri/target/release && ren kachina-builder.exe kachina-builder-standalone.exe && copy /b kachina-builder-standalone.exe+kachina-installer.exe kachina-builder.exe",
-    "debug": "tauri build --debug && pnpm dev:uac",
+    "build": "cross-env STATIC_VCRUNTIME=false tauri build",
+    "debug": "tauri build --debug && pnpm dev",
     "preview": "rsbuild preview",
     "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
     "async": "^3.2.6",
-    "uuid": "^11.0.3",
     "vue": "^3.5.13"
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",
-    "@fullhuman/postcss-purgecss": "^7.0.2",
     "@rsbuild/core": "^1.1.8",
+    "@rsbuild/plugin-node-polyfill": "^1.0.5",
     "@rsbuild/plugin-vue": "^1.0.5",
     "@tauri-apps/cli": "^2",
     "@types/async": "^3.2.24",
-    "@types/uuid": "^10.0.0",
+    "@types/node": "^22.13.9",
     "compression-webpack-plugin": "^11.1.0",
     "cross-env": "^7.0.3",
     "eslint": "^9.12.0",
@@ -31,6 +30,5 @@
     "prettier": "^3.3.3",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.8.1"
-  },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+  }
 }

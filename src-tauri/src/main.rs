@@ -1,28 +1,25 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+pub mod api;
 pub mod cli;
-pub mod dfs;
-pub mod fs;
 pub mod installer;
-pub mod ipc;
-pub mod local;
 pub mod module;
 pub mod utils;
 
 use clap::Parser;
-use cli::arg::{Command, InstallArgs};
-use installer::uninstall::delete_self_on_exit;
+use cli::arg::{Command, UpdateArgs};
 use std::time::Duration;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
+use utils::uac::{check_elevated, run_elevated};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
         .user_agent(ua_string())
         .gzip(true)
         .zstd(true)
-        .read_timeout(Duration::from_secs(30))
+        .read_timeout(std::time::Duration::from_secs(30))
         .connect_timeout(std::time::Duration::from_secs(5))
         .build()
         .unwrap();
@@ -38,7 +35,7 @@ fn ua_string() -> String {
         "Unknown".to_string()
     };
     format!(
-        "KachinaInstaller/{} Webview2/{} Windows/{}.{}.{} Threads/{}",
+        "HutaoInstaller/{} Webview2/{} Windows/{}.{}.{} Threads/{}",
         env!("CARGO_PKG_VERSION"),
         wv2ver,
         winver.0,
@@ -52,43 +49,49 @@ fn main() {
     use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
     let _ = unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
     let cli = cli::Cli::parse();
-    let mut command = cli.command();
+    let command = cli.command();
     let wv2ver = tauri::webview_version();
     if wv2ver.is_err() {
-        command = Command::InstallWebview2;
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(module::wv2::install_webview2());
+        return;
     }
-    // command is not  Command::Install, can be anything
+
+    // TODO: bypass elevation
+    // let elevated = check_elevated().unwrap_or(false);
+    // if !elevated {
+    //     let _ = run_elevated(std::env::current_exe().unwrap(), cli.command_as_str());
+    //     return;
+    // }
+
     match command {
-        Command::Install(install) => {
+        Command::Install => {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(tauri_main(install));
+                .block_on(tauri_main(None));
         }
-        Command::HeadlessUac(args) => {
+        Command::Update(args) => {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(ipc::manager::uac_ipc_main(args));
-        }
-        Command::InstallWebview2 => {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(module::wv2::install_webview2());
+                .block_on(tauri_main(Some(args)));
         }
     }
 }
 
-async fn tauri_main(args: InstallArgs) {
+async fn tauri_main(args: Option<UpdateArgs>) {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
     let (major, minor, build) = nt_version::get();
     let build = (build & 0xffff) as u16;
-    let is_lower_than_win10 = major < 10;
-    if is_lower_than_win10 {
+    let is_lower_than_win10_22h2 = major < 10 && build < 19045;
+    let is_lower_than_win11_22h2 = major < 10 && build > 22000 && build < 22621;
+    if is_lower_than_win10_22h2 || is_lower_than_win11_22h2 {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("不支持的操作系统版本")
@@ -112,25 +115,20 @@ async fn tauri_main(args: InstallArgs) {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             // things which can be run directly
-            fs::is_dir_empty,
-            dfs::get_dfs,
-            dfs::get_dfs_metadata,
-            dfs::get_http_with_range,
-            installer::log,
-            installer::launch_and_exit,
-            installer::config::get_installer_config,
-            installer::lnk::get_dirs,
-            installer::registry::read_uninstall_metadata,
-            installer::select_dir,
+            api::generic_get_patch,
+            api::homa_login,
+            api::homa_fetch_cdn,
+            api::homa_fetch_userinfo,
             installer::error_dialog,
-            installer::confirm_dialog,
-            // new mamaned operation
-            ipc::manager::managed_operation,
+            installer::message_dialog,
+            installer::get_config,
+            installer::open_tos,
+            installer::create_desktop_lnk,
+            installer::launch_and_exit
         ])
         .manage(args)
-        .manage(ipc::manager::ManagedElevate::new())
         .setup(move |app| {
-            let temp_dir_for_data = temp_dir.join("KachinaInstaller");
+            let temp_dir_for_data = temp_dir.join("HutaoInstaller");
             let mut main_window = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
@@ -140,7 +138,7 @@ async fn tauri_main(args: InstallArgs) {
             .resizable(false)
             .maximizable(false)
             .transparent(true)
-            .inner_size(520.0, 250.0)
+            .inner_size(520.0, 300.0)
             .center();
             if !cfg!(debug_assertions) {
                 main_window = main_window.data_directory(temp_dir_for_data).visible(false);
@@ -182,9 +180,6 @@ async fn tauri_main(args: InstallArgs) {
                         _ => {}
                     }
                 }
-            }
-            if let WindowEvent::CloseRequested { .. } = event {
-                delete_self_on_exit();
             }
         })
         .run(tauri::generate_context!())

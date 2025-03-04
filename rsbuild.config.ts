@@ -2,6 +2,7 @@ import { defineConfig } from '@rsbuild/core';
 import { pluginVue } from '@rsbuild/plugin-vue';
 import CompressionPlugin from 'compression-webpack-plugin';
 import PurgeCSSPlugin from '@fullhuman/postcss-purgecss';
+import { pluginNodePolyfill } from '@rsbuild/plugin-node-polyfill';
 
 export default defineConfig({
   server: {
@@ -20,7 +21,7 @@ export default defineConfig({
       strategy: 'single-vendor',
     },
   },
-  plugins: [pluginVue()],
+  plugins: [pluginVue(), pluginNodePolyfill()],
   tools: {
     bundlerChain: (chain) => {
       // if (process.env.NODE_ENV !== 'development') {
@@ -42,16 +43,6 @@ export default defineConfig({
           bundlerInfo: { force: false },
         },
       },
-    },
-    postcss: {
-      postcssOptions: {
-        plugins: [
-          PurgeCSSPlugin({
-            safelist: [/^(?!h[1-6]).*$/],
-            variables: true,
-          }),
-        ],
-      },
-    },
+    }
   },
 });
