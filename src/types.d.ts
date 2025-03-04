@@ -31,6 +31,7 @@ type GenericPatchPackageMirror = {
     url: string,
     mirror_name: string,
     mirror_type: string,
+    speed: number | null,
 }
 
 interface Config {

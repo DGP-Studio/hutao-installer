@@ -1,7 +1,11 @@
-use crate::{cli::arg::UpdateArgs, utils::{dir::get_desktop, package_manager::try_get_hutao_version, uac::run_elevated}};
+use crate::{
+    cli::arg::UpdateArgs,
+    utils::{dir::get_desktop, package_manager::try_get_hutao_version, uac::run_elevated},
+    REQUEST_CLIENT,
+};
 use serde::Serialize;
 use serde_json::Value;
-use std::path::Path;
+use std::{path::Path, time::Instant};
 use tauri::{AppHandle, State, WebviewWindow};
 
 #[derive(Serialize, Debug, Clone)]
@@ -52,7 +56,7 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
             is_update: true,
             curr_version: exists,
             token: update_args.token,
-        })
+        });
     }
 
     Ok(Config {
@@ -60,6 +64,21 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
         curr_version: exists,
         token: None,
     })
+}
+
+#[tauri::command]
+pub async fn speedtest_1mb(url: String) -> Result<f64, String> {
+    let start = Instant::now();
+    let res = REQUEST_CLIENT
+        .get(&url)
+        .header("Range", "bytes=0-1048575")
+        .send()
+        .await;
+    let elapsed = start.elapsed().as_millis();
+    if res.is_err() {
+        return Ok((-1.0) as f64);
+    }
+    Ok(1.0 / ((elapsed as f64) / (1000 as f64)))
 }
 
 #[tauri::command]
@@ -72,7 +91,9 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     let desktop_path = Path::new(&desktop);
     let lnk_path = Path::new(&lnk);
 
-    tokio::fs::create_dir_all(desktop_path).await.map_err(|e| format!("Failed to create lnk dir: {:?}", e))?;
+    tokio::fs::create_dir_all(desktop_path)
+        .await
+        .map_err(|e| format!("Failed to create lnk dir: {:?}", e))?;
     let sl = mslnk::ShellLink::new(target_path)
         .map_err(|e| format!("Failed to create shell link: {:?}", e))?;
     sl.create_lnk(lnk_path)

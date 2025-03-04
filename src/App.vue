@@ -44,15 +44,14 @@
         <div class="choose-mirror" v-if="step === 3">
           <div class="choose-mirror-desc">
             <div class="desc">选择一个镜像源</div>
-            <!-- <label v-for="(mirror, index) in mirrors" :key="index" class="list-item">
-              <input type="radio" v-model="selectedMirror" :value="mirror" />
-              <span>{{ mirror.mirror_name }}</span>
-            </label> -->
             <div class="listview">
               <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
                 :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
                 <div class="left-indicator"></div>
-                <span>{{ item.mirror_name }}</span>
+                <div class="mirror-item">
+                  <span>{{ item.mirror_name }}</span>
+                  <span>{{ item.speed == -1 ? "timeout" : `${item.speed?.toFixed(2)} MB/s` }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -380,6 +379,14 @@
   height: 16px;
   opacity: 1;
 }
+
+.mirror-item {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 14px;
+  gap: 8px;
+}
 </style>
 <style>
 .d-single-stat {
@@ -539,6 +546,16 @@ function onItemClick(item: GenericPatchPackageMirror): void {
   selectedMirror.value = item;
 }
 
+async function testMirrorSpeed(): Promise<void> {
+  const testers = [];
+  for (const mirror of mirrors.value) {
+    testers.push(invoke<number>('speedtest_1mb', { url: mirror.url }).then(s => mirror.speed = s));
+  }
+
+  await Promise.all(testers);
+  mirrors.value = mirrors.value.sort((a, b) => (b.speed ?? -1) - (a.speed ?? -1));
+}
+
 onMounted(async () => {
   const win = getCurrentWindow();
   await win.setTitle('Snap Hutao Deployment');
@@ -554,9 +571,12 @@ onMounted(async () => {
     let remote = Version.parse(patch_data.version);
     if (true || remote.compare(local) <= 0) {
       step.value = 6;
+      init.value = true;
+      return;
     }
   }
 
+  testMirrorSpeed();
   init.value = true;
 })
 

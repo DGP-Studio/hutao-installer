@@ -123,6 +123,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::message_dialog,
             installer::get_config,
             installer::open_tos,
+            installer::speedtest_1mb,
             installer::create_desktop_lnk,
             installer::launch_and_exit
         ])
