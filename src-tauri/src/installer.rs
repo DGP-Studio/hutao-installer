@@ -14,6 +14,11 @@ use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, State, WebviewWindow};
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+use winsafe::{
+    co::{CLSCTX, CLSID, SW},
+    prelude::{ole_IPersistFile, ole_IUnknown, shell_IShellLink},
+    CoCreateInstance, IPersistFile, IShellLink,
+};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Config {
@@ -254,22 +259,33 @@ pub async fn install_package(
 
 #[tauri::command]
 pub async fn create_desktop_lnk() -> Result<(), String> {
-    // TODO
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
     let desktop = get_desktop().unwrap();
     let lnk = format!(r#"{}\Snap Hutao.lnk"#, desktop);
 
-    let target_path = Path::new(&target);
     let desktop_path = Path::new(&desktop);
-    let lnk_path = Path::new(&lnk);
 
     tokio::fs::create_dir_all(desktop_path)
         .await
         .map_err(|e| format!("Failed to create lnk dir: {:?}", e))?;
-    let sl = mslnk::ShellLink::new(target_path)
+
+    let sl = CoCreateInstance::<IShellLink>(&CLSID::ShellLink, None, CLSCTX::INPROC_SERVER)
         .map_err(|e| format!("Failed to create shell link: {:?}", e))?;
-    sl.create_lnk(lnk_path)
-        .map_err(|e| format!("Failed to create lnk: {:?}", e))?;
+
+    let _ = sl
+        .SetPath(&target)
+        .map_err(|e| format!("Failed to set shell link path: {:?}", e))?;
+    let _ = sl
+        .SetShowCmd(SW::SHOWNORMAL)
+        .map_err(|e| format!("Failed to set shell link show cmd: {:?}", e))?;
+
+    let pf = sl
+        .QueryInterface::<IPersistFile>()
+        .map_err(|e| format!("Failed to query persist file: {:?}", e))?;
+
+    let _ = pf
+        .Save(Some(&lnk), false)
+        .map_err(|e| format!("Failed to save lnk: {:?}", e))?;
 
     Ok(())
 }

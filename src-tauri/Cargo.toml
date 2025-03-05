@@ -63,7 +63,6 @@ indicatif = { version = "0.17.9", features = ["tokio"] }
 dark-light = "2.0.0"
 pin-project = "1.1.7"
 chksum-sha2-256 = { version = "0.1", features = ["async-runtime-tokio"] }
-mslnk = "=0.1"
 webbrowser = "0.8"
 winreg = "0.55.0"
 futures = "0.3.31"
@@ -72,6 +71,7 @@ async-walkdir = "2.0"
 uuid = { version = "1.12.0", features = ["v4"] }
 whoami = "1.5.2"
 chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
+winsafe = { version = "0.0.23", features = ["shell"] }
 
 [[bin]]
 name = "hutao-installer"
