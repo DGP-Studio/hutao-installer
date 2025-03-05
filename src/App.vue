@@ -454,15 +454,15 @@ async function openTos(): Promise<void> {
 async function start(): Promise<void> {
   if (isOversea.value) {
     selectedMirror.value = mirrors.value[0];
-    step.value = 4;
+    await install();
     return;
   }
 
   if (CONFIG.token) {
-    LoadToken(CONFIG.token);
+    await LoadToken(CONFIG.token);
     if (await IsCdnAvailable()) {
       isCdnAvailable.value = true;
-      step.value = 4;
+      await install();
     } else {
       step.value = 3;
     }
@@ -480,7 +480,7 @@ async function login(): Promise<void> {
   }
   if (await IsCdnAvailable()) {
     isCdnAvailable.value = true;
-    step.value = 4;
+    await install();
   } else {
     await invoke('message_dialog', {
       title: '无 CDN 权限',
@@ -498,7 +498,17 @@ async function loginSkip(): Promise<void> {
 async function install(): Promise<void> {
   step.value = 4;
   current.value = '准备下载……';
-  let mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
+  let mirror_url;
+  try {
+    if(isCdnAvailable.value) mirror_url = await GetCdnUrl();
+    else mirror_url = selectedMirror.value!.url;
+  } catch (e) {
+    alert(e);
+  }
+  if(!mirror_url) {
+    step.value = 3;
+    return;
+  }
   console.log(mirror_url);
   let total_downloaded_size = 0;
   const total_size = await invoke<number>('head_package', { "mirrorUrl": mirror_url });
