@@ -7,12 +7,12 @@ type HomaPassportLoginResp = {
 type HomaPassportLoginReq = { UserName: string; Password: string };
 
 type HomaPassportUserInfo = {
-  normalized_username?: string;
-  username?: string;
-  is_licensed_developer: boolean;
-  is_maintainer: boolean;
-  gacha_log_expire_at: string;
-  cdn_expire_at: string;
+  NormalizedUsername?: string;
+  UserName?: string;
+  IsLicensedDeveloper: boolean;
+  IsMaintainer: boolean;
+  GachaLogExpireAt: string;
+  CdnExpireAt: string;
 };
 
 type GenericPatchData = {

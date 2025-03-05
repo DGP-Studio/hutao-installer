@@ -69,9 +69,9 @@ export async function IsCdnAvailable(): Promise<boolean> {
   });
 
   return (
-    userinfo.is_licensed_developer ||
-    userinfo.is_maintainer ||
-    new Date(userinfo.cdn_expire_at) > new Date()
+    userinfo.IsLicensedDeveloper ||
+    userinfo.IsMaintainer ||
+    new Date(userinfo.CdnExpireAt) > new Date()
   );
 }
 
