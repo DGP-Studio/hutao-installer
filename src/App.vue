@@ -552,7 +552,12 @@ async function install(): Promise<void> {
   }
   percent.value = 50;
   current.value = '正在检查 GlobalSign Code Signing Root R45 证书……';
-  await invoke('check_globalsign_r45');
+  try {
+    await invoke('check_globalsign_r45');
+  } catch (e) {
+    alert(e);
+    // todo: 后续处理
+  }
   percent.value = 60;
   subStep.value = 2;
   current.value = '正在部署包……';
@@ -563,14 +568,22 @@ async function install(): Promise<void> {
     `;
     percent.value = 60 + payload * 0.39;
   })
-  await invoke('install_package', { "sha256": sha256.value, "id": id });
+  try {
+    await invoke('install_package', {"sha256": sha256.value, "id": id});
+  } catch(e) {
+    alert(e);
+  }
   unlisten();
 
   percent.value = 99;
   current.value = '很快就好……';
 
   if (createLnk.value) {
-    await invoke('create_desktop_lnk');
+    try {
+      await invoke('create_desktop_lnk');
+    } catch (e) {
+      alert(e);
+    }
   }
   await invoke('clear_temp_dir');
 
