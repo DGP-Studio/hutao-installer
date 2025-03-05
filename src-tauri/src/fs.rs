@@ -1,161 +1,13 @@
-use async_compression::tokio::bufread::ZstdDecoder as TokioZstdDecoder;
 use fmmap::tokio::AsyncMmapFileExt;
-use futures::StreamExt;
-use serde::Serialize;
-use std::{
-    os::windows::fs::MetadataExt,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{
-    local::mmap, utils::hash::run_hash, utils::progressed_read::ReadWithCallback, REQUEST_CLIENT,
-};
-
-#[derive(Serialize, Debug, Clone)]
-pub struct Metadata {
-    pub file_name: String,
-    pub hash: String,
-    pub size: u64,
-    pub unwritable: bool,
-}
-
-pub async fn check_local_files(
-    source: String,
-    hash_algorithm: String,
-    file_list: Vec<String>,
-    notify: impl Fn(serde_json::Value) + std::marker::Send + 'static,
-) -> Result<Vec<Metadata>, String> {
-    let path = Path::new(&source);
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-    let mut entries = async_walkdir::WalkDir::new(source);
-    let mut files = Vec::new();
-    loop {
-        match entries.next().await {
-            Some(Ok(entry)) => {
-                let f = entry.file_type().await;
-                if f.is_err() {
-                    return Err(format!("Failed to get file type: {:?}", f.err()));
-                }
-                let f = f.unwrap();
-                if f.is_file() {
-                    let path = entry.path();
-                    let path = path.to_str();
-                    if path.is_none() {
-                        return Err("Failed to convert path to string".to_string());
-                    }
-                    let path = path.unwrap();
-                    let size = entry.metadata().await.unwrap().len();
-                    file_list.iter().for_each(|file| {
-                        if path
-                            .to_lowercase()
-                            .replace("\\", "/")
-                            .ends_with(&file.to_lowercase().replace("\\", "/"))
-                        {
-                            files.push(Metadata {
-                                file_name: path.to_string(),
-                                hash: "".to_string(),
-                                size,
-                                unwritable: false,
-                            });
-                        }
-                    });
-                }
-            }
-            Some(Err(e)) => {
-                return Err(format!("Failed to read entry: {:?}", e));
-            }
-            None => break,
-        }
-    }
-    // send first progress
-    notify(serde_json::json!((0, files.len())));
-    let len = files.len();
-    let mut joinset = tokio::task::JoinSet::new();
-
-    for file in files.iter() {
-        let hash_algorithm = hash_algorithm.clone();
-        let mut file = file.clone();
-        joinset.spawn(async move {
-            let exists = Path::new(&file.file_name).exists();
-            let writable = !exists
-                || tokio::fs::OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .open(&file.file_name)
-                    .await
-                    .is_ok();
-            if !writable {
-                file.unwritable = true;
-            } else {
-                let res = run_hash(&hash_algorithm, &file.file_name).await;
-                if res.is_err() {
-                    return Err(res.err().unwrap());
-                }
-                let hash = res.unwrap();
-                file.hash = hash;
-            }
-            Ok(file)
-        });
-    }
-
-    let mut finished = 0;
-    let mut finished_hashes = Vec::new();
-
-    while let Some(res) = joinset.join_next().await {
-        if let Err(e) = res {
-            return Err(format!("Failed to run hashing thread: {:?}", e));
-        }
-        let res = res.unwrap();
-        if let Err(e) = res {
-            return Err(format!("Failed to finish hashing: {:?}", e));
-        }
-        let res = res.unwrap();
-        finished += 1;
-        notify(serde_json::json!((finished, len)));
-        finished_hashes.push(res);
-    }
-    Ok(finished_hashes)
-}
-
-#[tauri::command]
-pub async fn is_dir_empty(path: String, exe_name: String) -> (bool, bool) {
-    let path = Path::new(&path);
-    if !path.exists() {
-        return (true, false);
-    }
-    let entries = tokio::fs::read_dir(path).await;
-    if entries.is_err() {
-        return (true, false);
-    }
-    // check if exe exists
-    let exe_path = path.join(exe_name);
-    if exe_path.exists() {
-        return (false, true);
-    }
-    let mut entries = entries.unwrap();
-    if let Ok(Some(_entry)) = entries.next_entry().await {
-        return (false, false);
-    }
-    (true, false)
-}
-
-#[tauri::command]
-pub async fn ensure_dir(path: String) -> Result<(), String> {
-    let path = Path::new(&path);
-    tokio::fs::create_dir_all(path)
-        .await
-        .map_err(|e| format!("Failed to create dir: {:?}", e))?;
-    Ok(())
-}
+use crate::{local::mmap, utils::hash::run_sha256_file_hash_async, REQUEST_CLIENT};
 
 pub async fn create_http_stream(
     url: &str,
     offset: usize,
     size: usize,
-    skip_decompress: bool,
 ) -> Result<
     (
         Box<dyn tokio::io::AsyncRead + Unpin + std::marker::Send>,
@@ -181,27 +33,18 @@ pub async fn create_http_stream(
     let content_length = res.content_length().unwrap_or(0);
     let stream = futures::TryStreamExt::map_err(res.bytes_stream(), std::io::Error::other);
     let reader = tokio_util::io::StreamReader::new(stream);
-    if skip_decompress {
-        return Ok((Box::new(reader), content_length));
-    }
-    let decoder = TokioZstdDecoder::new(reader);
-    Ok((Box::new(decoder), content_length))
+    Ok((Box::new(reader), content_length))
 }
 
 pub async fn create_local_stream(
     offset: usize,
     size: usize,
-    skip_decompress: bool,
 ) -> Result<Box<dyn tokio::io::AsyncRead + Unpin + std::marker::Send>, String> {
     let mmap_file = mmap().await;
     let reader = mmap_file
         .range_reader(offset, size)
         .map_err(|e| format!("Failed to mmap: {:?}", e))?;
-    if skip_decompress {
-        return Ok(Box::new(reader));
-    }
-    let decoder = TokioZstdDecoder::new(reader);
-    Ok(Box::new(decoder))
+    Ok(Box::new(reader))
 }
 
 pub async fn prepare_target(target: &str) -> Result<Option<PathBuf>, String> {
@@ -288,122 +131,12 @@ pub async fn progressed_copy(
     Ok(downloaded)
 }
 
-pub async fn progressed_hpatch<R, F>(
-    source: R,
-    target: &str,
-    diff_size: usize,
-    on_progress: F,
-    override_old_path: Option<PathBuf>,
-) -> Result<usize, String>
-where
-    R: AsyncRead + std::marker::Unpin + Send + 'static,
-    F: Fn(usize) + Send + 'static,
-{
-    let mut downloaded = 0;
-    let decoder = ReadWithCallback {
-        reader: source,
-        callback: move |chunk| {
-            downloaded += chunk;
-            on_progress(downloaded);
-        },
-    };
-    let target = target.to_string();
-    let target_cl = Path::new(&target);
-    let old_target_old = target_cl.with_extension("patchold");
-    // try remove old_target_old, do not throw error if failed
-    let _ = tokio::fs::remove_file(old_target_old).await;
-    let new_target = target_cl.with_extension("patching");
-    let target_size = target_cl
-        .metadata()
-        .map_err(|e| format!("Failed to get target size: {:?}", e))?;
-    let target_file = std::fs::File::create(new_target.clone())
-        .map_err(|e| format!("Failed to create new target: {:?}", e))?;
-    let old_target_file = std::fs::File::open(
-        if let Some(override_old_path) = override_old_path.as_ref() {
-            override_old_path.clone()
-        } else {
-            PathBuf::from(target.clone())
-        },
-    )
-    .map_err(|e| format!("Failed to open target: {:?}", e))?;
-    let diff_file = tokio_util::io::SyncIoBridge::new(decoder);
-    let res = tokio::task::spawn_blocking(move || {
-        hpatch_sys::safe_patch_single_stream(
-            target_file,
-            diff_file,
-            diff_size,
-            old_target_file,
-            target_size.file_size() as usize,
-        )
-    })
-    .await
-    .map_err(|e| format!("Failed to exec hpatch: {:?}", e))?;
-    if res {
-        // move target to target.old
-        let old_target = target_cl.with_extension("old");
-        let exe_path = std::env::current_exe();
-        let exe_path: PathBuf = exe_path.map_err(|e| format!("Failed to get exe path: {:?}", e))?;
-        // if old file is not self
-        if exe_path != target_cl {
-            // rename to .old
-            tokio::fs::rename(target_cl, old_target.clone())
-                .await
-                .map_err(|e| format!("Failed to rename target: {:?}", e))?;
-            // rename new file to original
-            tokio::fs::rename(new_target, target_cl)
-                .await
-                .map_err(|e| format!("Failed to rename new target: {:?}", e))?;
-
-            // delete old file
-            tokio::fs::remove_file(old_target)
-                .await
-                .map_err(|e| format!("Failed to remove old target: {:?}", e))?;
-        } else {
-            if override_old_path.is_none() {
-                // rename to .old
-                tokio::fs::rename(target_cl, old_target.clone())
-                    .await
-                    .map_err(|e| format!("Failed to rename target: {:?}", e))?;
-            }
-            // self is already renamed and cannot be deleted, just replace the new file
-            tokio::fs::rename(new_target, target_cl)
-                .await
-                .map_err(|e| format!("Failed to rename new target: {:?}", e))?;
-        }
-    } else {
-        // delete new target
-        tokio::fs::remove_file(new_target)
-            .await
-            .map_err(|e| format!("Failed to remove new target: {:?}", e))?;
-        return Err("Failed to run hpatch".to_string());
-    }
-    Ok(diff_size)
-}
-
-pub async fn verify_hash(
-    target: &str,
-    md5: Option<String>,
-    xxh: Option<String>,
-) -> Result<(), String> {
-    let alg = if md5.is_some() {
-        "md5"
-    } else if xxh.is_some() {
-        "xxh"
-    } else {
-        return Ok(());
-    };
-    let expected = if let Some(md5) = md5 {
-        md5
-    } else if let Some(xxh) = xxh {
-        xxh
-    } else {
-        return Err("No hash provided".to_string());
-    };
-    let hash = run_hash(alg, target).await?;
-    if hash != expected {
+pub async fn verify_hash(target: &str, sha256: String) -> Result<(), String> {
+    let hash = run_sha256_file_hash_async(target).await?;
+    if hash != sha256 {
         return Err(format!(
             "File {} hash mismatch: expected {}, got {}",
-            target, expected, hash
+            target, sha256, hash
         ));
     }
     Ok(())
