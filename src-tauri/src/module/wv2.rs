@@ -121,7 +121,7 @@ pub async fn install_webview2() {
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir
         .as_path()
-        .join("kachina.MicrosoftEdgeWebview2Setup.exe");
+        .join("MicrosoftEdgeWebview2Setup.exe");
     tokio::fs::write(&installer_path, wv2_installer_blob)
         .await
         .expect("failed to write installer to temp dir");

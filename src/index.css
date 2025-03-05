@@ -248,6 +248,9 @@
     --colorNeutralShadowKeyDarker: rgba(0, 0, 0, 0.48);
     --colorBrandShadowAmbient: rgba(0, 0, 0, 0.3);
     --colorBrandShadowKey: rgba(0, 0, 0, 0.25);
+    --colorListViewHoverOrSelected: #2d2d2d;
+    --colorTextareaBackground: #333333;
+    --colorTextareaText: #ffffff;
     --shadow2: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
     --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
@@ -260,10 +263,6 @@
     --shadow16Brand: 0 0 2px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.25);
     --shadow28Brand: 0 0 8px rgba(0, 0, 0, 0.3), 0 14px 28px rgba(0, 0, 0, 0.25);
     --shadow64Brand: 0 0 8px rgba(0, 0, 0, 0.3), 0 32px 64px rgba(0, 0, 0, 0.25);
-  }
-  textarea {
-    background: #333333;
-    color: #fff;
   }
 }
 @media (prefers-color-scheme: light) {
@@ -516,6 +515,9 @@
     --colorNeutralShadowKeyDarker: rgba(0, 0, 0, 0.24);
     --colorBrandShadowAmbient: rgba(0, 0, 0, 0.3);
     --colorBrandShadowKey: rgba(0, 0, 0, 0.25);
+    --colorListViewHoverOrSelected: #eaeaea;
+    --colorTextareaBackground: #ffffff;
+    --colorTextareaText: #242424;
     --shadow2: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
     --shadow8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
@@ -528,10 +530,6 @@
     --shadow16Brand: 0 0 2px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.25);
     --shadow28Brand: 0 0 8px rgba(0, 0, 0, 0.3), 0 14px 28px rgba(0, 0, 0, 0.25);
     --shadow64Brand: 0 0 8px rgba(0, 0, 0, 0.3), 0 32px 64px rgba(0, 0, 0, 0.25);
-  }
-  textarea {
-    background: #ffffff;
-    color: #242424;
   }
 }
 

@@ -20,18 +20,26 @@ pub struct HomaPassportLoginResp {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct HomaPassportLoginReq {
-    pub UserName: String,
-    pub Password: String,
+    #[serde(rename = "UserName")]
+    pub username: String,
+    #[serde(rename = "Password")]
+    pub password: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct HomaPassportUserInfo {
-    pub NormalizedUserName: Option<String>,
-    pub UserName: Option<String>,
-    pub IsLicensedDeveloper: bool,
-    pub IsMaintainer: bool,
-    pub GachaLogExpireAt: String,
-    pub CdnExpireAt: String,
+    #[serde(rename = "NormalizedUserName")]
+    pub normalized_username: Option<String>,
+    #[serde(rename = "UserName")]
+    pub username: Option<String>,
+    #[serde(rename = "IsLicensedDeveloper")]
+    pub is_licensed_developer: bool,
+    #[serde(rename = "IsMaintainer")]
+    pub is_maintainer: bool,
+    #[serde(rename = "GachaLogExpireAt")]
+    pub gacha_log_expire_at: String,
+    #[serde(rename = "CdnExpireAt")]
+    pub cdn_expire_at: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -40,6 +48,20 @@ pub struct HomaPassportUserInfoResp {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<HomaPassportUserInfo>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GenericIp {
+    pub ip: String,
+    pub division: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GenericIpResp {
+    pub retcode: i32,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<GenericIp>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -65,6 +87,30 @@ pub struct GenericPatchResp {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<GenericPatchData>,
+}
+
+#[tauri::command]
+pub async fn generic_is_oversea() -> Result<bool, String> {
+    let url = "https://api.snapgenshin.com/ip";
+    let resp = REQUEST_CLIENT
+        .get(url)
+        .send()
+        .await;
+    if resp.is_err() {
+        return Err(format!("Failed to send request: {:?}", resp.err()));
+    }
+    let resp = resp.unwrap();
+    let json: Result<GenericIpResp, reqwest::Error> = resp.json().await;
+    if json.is_err() {
+        return Err(format!("Failed to parse json: {:?}", json.err()));
+    }
+    let json = json.unwrap();
+    if json.retcode != 0 {
+        return Err(format!("Failed to fetch ip: {:?}", json.message));
+    }
+    let data = json.data.unwrap();
+    let division = data.division;
+    Ok(division == "Oversea")
 }
 
 #[tauri::command]

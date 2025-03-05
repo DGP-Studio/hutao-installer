@@ -1,0 +1,106 @@
+use std::ffi::CString;
+use tokio_util::bytes::Bytes;
+use windows::{core::s, Win32::Security::Cryptography::*};
+
+pub async fn find_certificate(subject: &str) -> Result<bool, String> {
+    unsafe {
+        let store_name = s!("ROOT").as_ptr();
+        let h_store = CertOpenStore(
+            CERT_STORE_PROV_SYSTEM_A,
+            CERT_QUERY_ENCODING_TYPE(0),
+            None,
+            CERT_OPEN_STORE_FLAGS(CERT_SYSTEM_STORE_LOCAL_MACHINE),
+            Some(store_name as _),
+        );
+
+        if h_store.is_err() {
+            return Err(format!("Failed to open store: {:?}", h_store.err()));
+        }
+
+        let h_store = h_store.unwrap();
+        if h_store.is_invalid() {
+            return Err("Failed to open store".to_string());
+        }
+
+        let subject_cstr = CString::new(subject).expect("Failed to convert subject to CString");
+
+        let cert = CertFindCertificateInStore(
+            h_store,
+            X509_ASN_ENCODING,
+            0,
+            CERT_FIND_SUBJECT_STR,
+            Some(subject_cstr.as_ptr() as _),
+            None,
+        );
+
+        let found = !cert.is_null();
+        if found {
+            let _ = CertFreeCertificateContext(Some(cert));
+        }
+
+        Ok(found)
+    }
+}
+
+pub async fn install_certificate(
+    content: Bytes,
+    window: tauri::WebviewWindow,
+) -> Result<bool, String> {
+    unsafe {
+        let store_name = s!("ROOT").as_ptr();
+        let h_store = CertOpenStore(
+            CERT_STORE_PROV_SYSTEM_A,
+            CERT_QUERY_ENCODING_TYPE(0),
+            None,
+            CERT_OPEN_STORE_FLAGS(CERT_SYSTEM_STORE_LOCAL_MACHINE),
+            Some(store_name as _),
+        );
+
+        if h_store.is_err() {
+            return Err(format!("Failed to open store: {:?}", h_store.err()));
+        }
+
+        let h_store = h_store.unwrap();
+        if h_store.is_invalid() {
+            return Err("Failed to open store".to_string());
+        }
+
+        let cert = CertCreateCertificateContext(X509_ASN_ENCODING, &content);
+        if cert.is_null() {
+            return Err("Failed to create certificate context".to_string());
+        }
+
+        let title = "安装证书".to_string();
+        let message = r#"
+        正在向 本地计算机/受信任的根证书颁发机构 添加证书
+        如果你无法理解弹窗中的文本，请点击 [是]
+
+        Adding certificate to LocalMachine/ThirdParty Root CA store,
+        please click [yes] on the [Security Waring] dialog
+
+        关于更多安全信息，请查看下方的网址
+        For more security information, please visit the url down below
+        https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root-certificates"#.to_string();
+
+        rfd::MessageDialog::new()
+            .set_title(&title)
+            .set_description(&message)
+            .set_level(rfd::MessageLevel::Info)
+            .set_parent(&window)
+            .show();
+
+        let add_res =
+            CertAddCertificateContextToStore(h_store, cert, CERT_STORE_ADD_REPLACE_EXISTING, None);
+
+        let _ = CertFreeCertificateContext(Some(cert));
+
+        if add_res.is_err() {
+            return Err(format!(
+                "Failed to add certificate to store: {:?}",
+                add_res.err()
+            ));
+        }
+
+        Ok(true)
+    }
+}

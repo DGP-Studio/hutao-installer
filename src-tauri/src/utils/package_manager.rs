@@ -1,6 +1,5 @@
 use windows::{
     core::{Error, Result, HSTRING},
-    ApplicationModel::PackageVersion,
     Foundation::{AsyncOperationProgressHandler, Uri},
     Management::Deployment::{
         AddPackageOptions, DeploymentProgress, DeploymentResult, PackageManager,
@@ -21,10 +20,7 @@ pub async fn try_get_hutao_version() -> Result<Option<String>> {
         let version = id.Version()?;
         Ok(Some(format!(
             "{}.{}.{}.{}",
-            version.Major,
-            version.Minor,
-            version.Build,
-            version.Revision
+            version.Major, version.Minor, version.Build, version.Revision
         )))
     } else {
         Ok(None)
@@ -33,7 +29,7 @@ pub async fn try_get_hutao_version() -> Result<Option<String>> {
 
 pub async fn add_package(
     package_path: String,
-    handler: AsyncOperationProgressHandler<DeploymentResult, DeploymentProgress>,
+    handler: impl Fn(serde_json::Value) + std::marker::Send + 'static,
 ) -> Result<bool> {
     let package_manager = PackageManager::new()?;
     let package_path = HSTRING::from(package_path);
@@ -45,7 +41,12 @@ pub async fn add_package(
         windows::Management::Deployment::DeploymentResult,
         windows::Management::Deployment::DeploymentProgress,
     > = package_manager.AddPackageByUriAsync(&package_uri, &options)?;
-    let _ = op.SetProgress(&handler);
+    let progress_sink: AsyncOperationProgressHandler<DeploymentResult, DeploymentProgress> =
+        AsyncOperationProgressHandler::new(move |_, progress: &DeploymentProgress| {
+            let _ = handler(serde_json::json!(progress.percentage));
+            Ok(())
+        });
+    let _ = op.SetProgress(&progress_sink);
     let res = op.GetResults()?;
 
     if res.IsRegistered()? {

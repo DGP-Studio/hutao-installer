@@ -3,13 +3,14 @@
 
 pub mod api;
 pub mod cli;
+pub mod fs;
 pub mod installer;
+pub mod local;
 pub mod module;
 pub mod utils;
 
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
-use std::time::Duration;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
 use utils::uac::{check_elevated, run_elevated};
@@ -18,7 +19,6 @@ lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
         .user_agent(ua_string())
         .gzip(true)
-        .zstd(true)
         .read_timeout(std::time::Duration::from_secs(30))
         .connect_timeout(std::time::Duration::from_secs(5))
         .build()
@@ -115,6 +115,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             // things which can be run directly
+            api::generic_is_oversea,
             api::generic_get_patch,
             api::homa_login,
             api::homa_fetch_cdn,
@@ -124,7 +125,14 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::get_config,
             installer::open_tos,
             installer::speedtest_1mb,
+            installer::head_package,
+            installer::download_package,
+            installer::check_vcrt,
+            installer::install_vcrt,
+            installer::check_globalsign_r45,
+            installer::install_package,
             installer::create_desktop_lnk,
+            installer::clear_temp_dir,
             installer::launch_and_exit
         ])
         .manage(args)
@@ -139,7 +147,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             .resizable(false)
             .maximizable(false)
             .transparent(true)
-            .inner_size(520.0, 300.0)
+            .inner_size(520.0, 350.0)
             .center();
             if !cfg!(debug_assertions) {
                 main_window = main_window.data_directory(temp_dir_for_data).visible(false);

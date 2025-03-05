@@ -1,41 +1,47 @@
 type HomaPassportLoginResp = {
-    retcode: number,
-    message: string,
-    data?: string,
-}
+  retcode: number;
+  message: string;
+  data?: string;
+};
 
 type HomaPassportLoginReq = {
-    UserName: string,
-    Password: string,
-}
+  username: string;
+  password: string;
+};
 
 type HomaPassportUserInfo = {
-    NormalizedUserName?: string,
-    UserName?: string,
-    IsLicensedDeveloper: boolean,
-    IsMaintainer: boolean,
-    GachaLogExpireAt: string,
-    CdnExpireAt: string,
-}
+  normalized_username?: string;
+  username?: string;
+  is_licensed_developer: boolean;
+  is_maintainer: boolean;
+  gacha_log_expire_at: string;
+  cdn_expire_at: string;
+};
 
 type GenericPatchData = {
-    version: string,
-    validation: string,
-    cache_time: string,
-    mirrors: GenericPatchPackageMirror[],
-    urls: string[],
-    sha256: string,
-}
+  version: string;
+  validation: string;
+  cache_time: string;
+  mirrors: GenericPatchPackageMirror[];
+  urls: string[];
+  sha256: string;
+};
 
 type GenericPatchPackageMirror = {
-    url: string,
-    mirror_name: string,
-    mirror_type: string,
-    speed: number | null,
-}
+  url: string;
+  mirror_name: string;
+  mirror_type: string;
+  speed: number | null;
+};
 
 interface Config {
-    is_update: boolean;
-    curr_version: string | null;
+  is_update: boolean;
+  curr_version: string | null;
   token: string | null;
 }
+
+type InstallStat = {
+  speedLastSize: number;
+  lastTime: DOMHighResTimeStamp;
+  speed: number;
+};

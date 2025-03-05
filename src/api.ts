@@ -1,5 +1,6 @@
 import { invoke } from "./tauri.ts";
 
+// @ts-expect-error crypto will be there
 import crypto from "crypto";
 
 const PUBLIC_KEY =
@@ -15,6 +16,10 @@ const PUBLIC_KEY =
 
 let cachedData: GenericPatchData | null = null;
 let cachedToken: string | null = null;
+
+export async function fetchIsOversea(): Promise<boolean> {
+  return await invoke<boolean>("generic_is_oversea");
+}
 
 export async function fetchPatchData(): Promise<GenericPatchData> {
   if (cachedData) {
@@ -37,8 +42,8 @@ export async function LoginHomaPassport(
   password: string
 ): Promise<boolean> {
   const req: HomaPassportLoginReq = {
-    UserName: encrypt(username),
-    Password: encrypt(password),
+    username: encrypt(username),
+    password: encrypt(password),
   };
   const res = await invoke<HomaPassportLoginResp>("homa_login", {
     loginReq: req,
@@ -48,11 +53,11 @@ export async function LoginHomaPassport(
     return true;
   }
 
-    await invoke("error_dialog", {
-        title: "登录失败",
-        message: res.message,
-    });
-    return false;
+  await invoke("error_dialog", {
+    title: "登录失败",
+    message: res.message,
+  });
+  return false;
 }
 
 export async function LoadToken(token: string): Promise<void> {
@@ -69,9 +74,9 @@ export async function IsCdnAvailable(): Promise<boolean> {
   });
 
   return (
-    userinfo.IsLicensedDeveloper ||
-    userinfo.IsMaintainer ||
-    new Date(userinfo.CdnExpireAt) > new Date()
+    userinfo.is_licensed_developer ||
+    userinfo.is_maintainer ||
+    new Date(userinfo.cdn_expire_at) > new Date()
   );
 }
 
@@ -97,6 +102,7 @@ function encrypt(data: string): string {
       key: PUBLIC_KEY,
       padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
     },
+    // @ts-expect-error And Buffer will be there
     Buffer.from(data)
   );
   return encData.toString("base64");

@@ -1,12 +1,19 @@
 use crate::{
     cli::arg::UpdateArgs,
-    utils::{dir::get_desktop, package_manager::try_get_hutao_version, uac::run_elevated},
+    fs::{create_http_stream, create_target_file, progressed_copy},
+    utils::{
+        cert::{find_certificate, install_certificate},
+        dir::get_desktop,
+        hash::run_hash,
+        package_manager::{add_package, try_get_hutao_version},
+        uac::run_elevated,
+    },
     REQUEST_CLIENT,
 };
 use serde::Serialize;
-use serde_json::Value;
 use std::{path::Path, time::Instant};
-use tauri::{AppHandle, State, WebviewWindow};
+use tauri::{AppHandle, Emitter, State, WebviewWindow};
+use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Config {
@@ -27,7 +34,7 @@ pub async fn error_dialog(title: String, message: String, window: WebviewWindow)
 
 #[tauri::command]
 pub async fn message_dialog(title: String, message: String, window: WebviewWindow) {
-    let ret = rfd::MessageDialog::new()
+    rfd::MessageDialog::new()
         .set_title(&title)
         .set_description(&message)
         .set_level(rfd::MessageLevel::Info)
@@ -82,6 +89,170 @@ pub async fn speedtest_1mb(url: String) -> Result<f64, String> {
 }
 
 #[tauri::command]
+pub async fn head_package(mirror_url: String) -> Result<u64, String> {
+    let res = REQUEST_CLIENT.head(&mirror_url).send().await;
+    if res.is_err() {
+        return Err(format!("Failed to send http request: {:?}", res.err()));
+    }
+
+    let res = res.unwrap();
+    let len = res.content_length();
+    if len.is_none() {
+        return Err("Failed to get content length".to_string());
+    }
+
+    Ok(len.unwrap())
+}
+
+#[tauri::command]
+pub async fn download_package(
+    mirror_url: String,
+    id: String,
+    window: tauri::WebviewWindow,
+) -> Result<(), String> {
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let (mut stream, len) = create_http_stream(&mirror_url, 0, 0)
+        .await
+        .map_err(|e| format!("Failed to download msix: {:?}", e))?;
+    let mut target = create_target_file(installer_path.as_os_str().to_str().unwrap())
+        .await
+        .map_err(|e| format!("Failed to create msix: {:?}", e))?;
+    let progress_noti = move |downloaded: usize| {
+        let _ = window.emit(&id, serde_json::json!((downloaded, len)));
+    };
+    progressed_copy(&mut stream, &mut target, progress_noti).await?;
+    // close streams
+    drop(stream);
+    drop(target);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_vcrt() -> Result<bool, String> {
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let path = r#"SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"#.to_string();
+    let key = hklm.open_subkey(&path);
+    match key {
+        Ok(key) => {
+            if let Ok(installed) = key.get_value::<u32, _>("Installed") {
+                return Ok(installed == 1);
+            }
+        }
+        Err(_) => {}
+    }
+    Ok(false)
+}
+
+#[tauri::command]
+pub async fn install_vcrt(id: String, window: tauri::WebviewWindow) -> Result<(), String> {
+    let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.as_path().join("vc_redist.x64.exe");
+    let (mut stream, len) = create_http_stream(&url, 0, 0)
+        .await
+        .map_err(|e| format!("Failed to download vcrt installer: {:?}", e))?;
+    let mut target = create_target_file(installer_path.as_os_str().to_str().unwrap())
+        .await
+        .map_err(|e| format!("Failed to create vcrt installer: {:?}", e))?;
+    let progress_noti = move |downloaded: usize| {
+        let _ = window.emit(&id, serde_json::json!((downloaded, len)));
+    };
+    progressed_copy(&mut stream, &mut target, progress_noti).await?;
+    // close streams
+    drop(stream);
+    drop(target);
+    let cmd = tokio::process::Command::new(&installer_path)
+        .arg("/install")
+        .arg("/quiet")
+        .arg("/norestart")
+        .spawn();
+    if let Err(e) = cmd {
+        return Err(format!("Failed to run vcrt installer: {:?}", e));
+    }
+    let mut cmd = cmd.unwrap();
+    let status = cmd.wait().await;
+    if let Err(e) = status {
+        return Err(format!("Failed to wait for vcrt installer: {:?}", e));
+    }
+    let status = status.unwrap();
+    if !status.success() {
+        return Err(format!("Failed to install vcrt: {:?}", status));
+    }
+    let _ = tokio::fs::remove_file(installer_path).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_globalsign_r45(window: WebviewWindow) -> Result<(), String> {
+    if let Ok(found) = find_certificate("GlobalSign Code Signing Root R45").await {
+        if found {
+            return Ok(());
+        }
+    }
+
+    let url = "https://secure.globalsign.com/cacert/codesigningrootr45.crt";
+    let res = REQUEST_CLIENT.get(url).send().await;
+    if res.is_err() {
+        return Err(format!("Failed to send http request: {:?}", res.err()));
+    }
+
+    let res = res.unwrap();
+    let cert_ctnt = res.bytes().await;
+    if cert_ctnt.is_err() {
+        return Err(format!(
+            "Failed to get certificate content: {:?}",
+            cert_ctnt.err()
+        ));
+    }
+
+    let cert_ctnt = cert_ctnt.unwrap();
+    let install_res = install_certificate(cert_ctnt, window).await;
+    if install_res.is_err() {
+        return Err(format!(
+            "Failed to install certificate: {:?}",
+            install_res.err()
+        ));
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn install_package(
+    sha256: String,
+    id: String,
+    window: tauri::WebviewWindow,
+) -> Result<(), String> {
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let hash = run_hash(installer_path.to_str().unwrap()).await;
+    if hash.is_err() {
+        return Err(format!("Failed to hash installer: {:?}", hash.err()));
+    }
+
+    let hash = hash.unwrap();
+    if hash != sha256 {
+        return Err("Installer hash mismatch".to_string());
+    }
+
+    let install_res = add_package(
+        installer_path.as_os_str().to_str().unwrap().to_string(),
+        move |opr| {
+            let _ = window.emit(&id, opr);
+        },
+    )
+    .await;
+    if install_res.is_err() {
+        return Err(format!(
+            "Failed to install package: {:?}",
+            install_res.err()
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn create_desktop_lnk() -> Result<(), String> {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
     let desktop = get_desktop().unwrap();
@@ -99,6 +270,13 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     sl.create_lnk(lnk_path)
         .map_err(|e| format!("Failed to create lnk: {:?}", e))?;
 
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn clear_temp_dir() -> Result<(), String> {
+    let temp_dir = std::env::temp_dir();
+    let _ = tokio::fs::remove_dir_all(temp_dir).await;
     Ok(())
 }
 

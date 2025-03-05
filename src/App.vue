@@ -33,9 +33,9 @@
           <div class="btn-container">
             <button class="btn btn-login" @click="loginSkip">跳过</button>
             <button class="btn btn-login" @click="login"
-              :disabled="!emailRegex.test(homaUsername) || homaPassword.length === 0 || logging">
-              <div v-if="!logging">登录</div>
-              <span v-if="logging" class="fui-Spinner__spinner">
+              :disabled="!emailRegex.test(homaUsername) || homaPassword.length === 0 || logging_in">
+              <div v-if="!logging_in">登录</div>
+              <span v-if="logging_in" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail"></span>
               </span>
             </button>
@@ -137,6 +137,8 @@
   width: 100%;
   height: 32px;
   padding: 6px;
+  background: var(--colorTextareaBackground);
+  color: var(--colorTextareaText);
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 12px;
@@ -342,6 +344,8 @@
   max-height: 400px;
   overflow-y: auto;
   padding: 4px;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
@@ -356,12 +360,9 @@
   /* 圆角 */
 }
 
-.listview-item:hover {
-  background-color: #2d2d2d;
-}
-
+.listview-item:hover,
 .listview-item.selected {
-  background-color: #2d2d2d;
+  background-color: var(--colorListViewHoverOrSelected);
 }
 
 .left-indicator {
@@ -394,62 +395,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.d-single-list {
-  display: flex;
-  flex-direction: column;
-  height: 55px;
-  overflow: hidden;
-  padding-top: 4px;
-  font-size: 11px;
-  gap: 2px;
-  width: 230px;
-  max-height: 250px;
-  overflow-y: auto;
-  padding-left: 20px;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--colorBrandForeground1);
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: var(--colorBrandBackground);
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--colorBrandForeground2);
-  }
-}
-
-.d-single {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.d-single-filename {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.d-single-progress {
-  width: 36px;
-  min-width: 36px;
-}
 </style>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
-import { getCurrentWindow, invoke, sep } from './tauri';
+import { getCurrentWindow, invoke, listen } from './tauri';
 import Checkbox from './Checkbox.vue';
 import CircleSuccess from './CircleSuccess.vue';
-import { fetchPatchData, IsCdnAvailable, LoadToken, LoginHomaPassport } from "./api";
+import { v4 as uuid } from 'uuid';
+import { fetchIsOversea, fetchPatchData, GetCdnUrl, IsCdnAvailable, LoadToken, LoginHomaPassport } from "./api";
 
 const init = ref(false);
 
@@ -478,10 +432,12 @@ const homaUsername = ref<string>('');
 const homaPassword = ref<string>('');
 const progressInterval = ref<number>(0);
 
+const sha256 = ref<string>('');
 const mirrors = ref<GenericPatchPackageMirror[]>([]);
 const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
 const isCdnAvailable = ref<boolean>(false);
-const logging = ref<boolean>(false);
+const isOversea = ref<boolean>(false);
+const logging_in = ref<boolean>(false);
 
 const CONFIG: Config = reactive({
   is_update: false,
@@ -496,6 +452,12 @@ async function openTos(): Promise<void> {
 }
 
 async function start(): Promise<void> {
+  if (isOversea.value) {
+    selectedMirror.value = mirrors.value[0];
+    step.value = 4;
+    return;
+  }
+
   if (CONFIG.token) {
     LoadToken(CONFIG.token);
     if (await IsCdnAvailable()) {
@@ -511,9 +473,9 @@ async function start(): Promise<void> {
 }
 
 async function login(): Promise<void> {
-  logging.value = true;
+  logging_in.value = true;
   if (!await LoginHomaPassport(homaUsername.value, homaPassword.value)) {
-    logging.value = false;
+    logging_in.value = false;
     return;
   }
   if (await IsCdnAvailable()) {
@@ -526,7 +488,7 @@ async function login(): Promise<void> {
     })
     step.value = 3;
   }
-  logging.value = false;
+  logging_in.value = false;
 }
 
 async function loginSkip(): Promise<void> {
@@ -534,12 +496,91 @@ async function loginSkip(): Promise<void> {
 }
 
 async function install(): Promise<void> {
+  step.value = 4;
+  current.value = '准备下载……';
+  let mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
+  console.log(mirror_url);
+  let total_downloaded_size = 0;
+  const total_size = await invoke<number>('head_package', { "mirror_url": mirror_url });
+  let stat: InstallStat = {
+    speedLastSize: 0,
+    lastTime: performance.now(),
+    speed: 0,
+  };
+  progressInterval.value = setInterval(() => {
+    const now = performance.now();
+    const time_diff = now - stat.lastTime;
+    if (time_diff > 100) {
+      stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
+      stat.speedLastSize = total_downloaded_size;
+      stat.lastTime = now;
+    }
+    const speed = formatSize(stat.speed * 1000);
+    const downloaded = formatSize(total_downloaded_size);
+    const total = formatSize(total_size);
+    current.value = `
+      <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
+    `;
+    percent.value = (total_downloaded_size / total_size) * 40;
+  }, 30);
 
+  let id = uuid();
+  let unlisten = await listen<[number, number]>(id, ({ payload }) => {
+    total_downloaded_size = payload[0];
+  })
+  await invoke('download_package', { "mirror_url": mirror_url, "id": id });
+  unlisten();
+  clearInterval(progressInterval.value);
+  percent.value = 40;
+  subStep.value = 1;
+  current.value = '正在检查 MSVC 运行库……';
+  let is_vcrt_installed = await invoke<boolean>('check_vcrt');
+  if (!is_vcrt_installed) {
+    current.value = '正在安装 MSVC 运行库……';
+    id = uuid();
+    unlisten = await listen<[number, number]>(id, ({ payload }) => {
+      const currentSize = formatSize(payload[0]);
+      const targetSize = payload[1] ? formatSize(payload[1]) : '';
+      if (payload[0] >= payload[1] - 1) {
+        current.value = `安装 MSVC 运行库……`;
+      } else {
+        current.value = `下载 MSVC 运行库 ……<br>${currentSize}${targetSize ? ` / ${targetSize}` : ''}`;
+      }
+    })
+    await invoke('install_vcrt', { "id": id });
+    unlisten();
+  }
+  percent.value = 50;
+  current.value = '正在检查 GlobalSign Code Signing Root R45 证书……';
+  await invoke('check_globalsign_r45');
+  percent.value = 60;
+  subStep.value = 2;
+  current.value = '正在部署包……';
+  id = uuid();
+  unlisten = await listen<number>(id, ({ payload }) => {
+    current.value = `
+      <span class="d-single-stat">部署进度: ${payload} %</span>
+    `;
+    percent.value = 60 + payload * 0.39;
+  })
+  await invoke('install_package', { "sha256": sha256.value, "id": id });
+  unlisten();
+
+  percent.value = 99;
+  current.value = '很快就好……';
+
+  if (createLnk.value) {
+    await invoke('create_desktop_lnk');
+  }
+  await invoke('clear_temp_dir');
+
+  current.value = '安装完成';
+  step.value = 5;
+  percent.value = 100;
 }
 
 async function launch(): Promise<void> {
   await invoke('launch_and_exit');
-
 }
 
 function onItemClick(item: GenericPatchPackageMirror): void {
@@ -554,6 +595,7 @@ async function testMirrorSpeed(): Promise<void> {
 
   await Promise.all(testers);
   mirrors.value = mirrors.value.sort((a, b) => (b.speed ?? -1) - (a.speed ?? -1));
+  selectedMirror.value = mirrors.value[0];
 }
 
 onMounted(async () => {
@@ -565,6 +607,8 @@ onMounted(async () => {
   Object.assign(CONFIG, config);
   let patch_data = await fetchPatchData();
   mirrors.value = patch_data.mirrors;
+  sha256.value = patch_data.sha256;
+  isOversea.value = await fetchIsOversea();
 
   if (config.is_update && config.curr_version) {
     let local = Version.parse(config.curr_version);
@@ -579,6 +623,16 @@ onMounted(async () => {
   testMirrorSpeed();
   init.value = true;
 })
+
+function formatSize(size: number): string {
+  if (size < 1024) {
+    return `${size.toFixed(2)} B`;
+  }
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(2)} KB`;
+  }
+  return `${(size / 1024 / 1024).toFixed(2)} MB`;
+}
 
 class Version {
   major: number;
