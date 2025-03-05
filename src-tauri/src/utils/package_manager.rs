@@ -1,5 +1,5 @@
 use windows::{
-    core::{Error, Result, HSTRING},
+    core::{Error, Result, HSTRING,HRESULT},
     Foundation::{AsyncOperationProgressHandler, Uri},
     Management::Deployment::{
         AddPackageOptions, DeploymentProgress, DeploymentResult, PackageManager,
@@ -49,8 +49,8 @@ pub async fn add_package(
     let _ = op.SetProgress(&progress_sink);
     let res = op.GetResults()?;
 
-    if res.IsRegistered()? {
-        Ok(true)
+    if res.IsRegistered()? || res.ExtendedErrorCode()? == HRESULT(0) {
+       Ok(true)
     } else {
         Err(Error::from_hresult(res.ExtendedErrorCode()?))
     }
