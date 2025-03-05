@@ -4,10 +4,7 @@ type HomaPassportLoginResp = {
   data?: string;
 };
 
-type HomaPassportLoginReq = {
-  username: string;
-  password: string;
-};
+type HomaPassportLoginReq = { UserName: string; Password: string };
 
 type HomaPassportUserInfo = {
   normalized_username?: string;

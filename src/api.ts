@@ -41,13 +41,8 @@ export async function LoginHomaPassport(
   username: string,
   password: string
 ): Promise<boolean> {
-  const req: HomaPassportLoginReq = {
-    username: encrypt(username),
-    password: encrypt(password),
-  };
-  const res = await invoke<HomaPassportLoginResp>("homa_login", {
-    loginReq: req,
-  });
+  const req: HomaPassportLoginReq = { UserName: encrypt(username), Password: encrypt(password) };
+  const res = await invoke<HomaPassportLoginResp>("homa_login", {loginReq: req});
   if (res.retcode === 0) {
     cachedToken = res.data ?? null;
     return true;
