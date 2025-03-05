@@ -501,7 +501,7 @@ async function install(): Promise<void> {
   let mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
   console.log(mirror_url);
   let total_downloaded_size = 0;
-  const total_size = await invoke<number>('head_package', { "mirror_url": mirror_url });
+  const total_size = await invoke<number>('head_package', { "mirrorUrl": mirror_url });
   let stat: InstallStat = {
     speedLastSize: 0,
     lastTime: performance.now(),
@@ -528,7 +528,7 @@ async function install(): Promise<void> {
   let unlisten = await listen<[number, number]>(id, ({ payload }) => {
     total_downloaded_size = payload[0];
   })
-  await invoke('download_package', { "mirror_url": mirror_url, "id": id });
+  await invoke('download_package', { "mirrorUrl": mirror_url, "id": id });
   unlisten();
   clearInterval(progressInterval.value);
   percent.value = 40;
