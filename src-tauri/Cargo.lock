@@ -664,6 +664,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "221456234d441c788a2c51a27b91c4380f499de560670a67d3303e621d37b3bd"
 
 [[package]]
+name = "chksum-hash-md5"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8445e9efb2556cedf4ef2bf704cb335cdd037ed20fe954f281baf93fe5e7c0d"
+dependencies = [
+ "chksum-hash-core",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "chksum-hash-sha2-256"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -671,6 +681,19 @@ checksum = "8231bf5c173db494835789e73fce310773f8f623c65989bb346d52b809e5e2f8"
 dependencies = [
  "chksum-hash-core",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "chksum-md5"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dda0016624d188e791afdf491de89d0157411dafedb0a46dbcd3f1a13ef0a611"
+dependencies = [
+ "chksum-core",
+ "chksum-hash-md5",
+ "chksum-reader",
+ "chksum-writer",
+ "tokio",
 ]
 
 [[package]]
@@ -1956,6 +1979,7 @@ version = "0.1.0"
 dependencies = [
  "async-compression",
  "async-walkdir",
+ "chksum-md5",
  "chksum-sha2-256",
  "clap",
  "cppwinrt",
@@ -1979,6 +2003,7 @@ dependencies = [
  "tokio-util",
  "uuid",
  "webbrowser",
+ "whoami",
  "windows 0.58.0",
  "winreg 0.55.0",
 ]
@@ -5229,6 +5254,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasite"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8dad83b4f25e74f184f64c43b150b91efe7647395b42289f38e50566d82855b"
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5496,6 +5527,17 @@ dependencies = [
  "thiserror 2.0.12",
  "windows 0.60.0",
  "windows-core 0.60.1",
+]
+
+[[package]]
+name = "whoami"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "372d5b87f58ec45c384ba03563b03544dc5fadc3983e434b286913f5b4a9bb6d"
+dependencies = [
+ "redox_syscall",
+ "wasite",
+ "web-sys",
 ]
 
 [[package]]

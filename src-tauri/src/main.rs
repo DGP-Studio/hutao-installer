@@ -11,12 +11,18 @@ pub mod utils;
 
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
+use reqwest::header;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
-use utils::uac::{check_elevated, run_elevated};
+use utils::{
+    hash::run_md5_hash,
+    uac::{check_elevated, run_elevated},
+};
+use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
+        .default_headers(hutao_trace_headers())
         .user_agent(ua_string())
         .gzip(true)
         .read_timeout(std::time::Duration::from_secs(30))
@@ -43,6 +49,28 @@ fn ua_string() -> String {
         winver.2 & 0xffff,
         cpu_cores
     )
+}
+
+fn hutao_trace_headers() -> reqwest::header::HeaderMap {
+    let mut headers = header::HeaderMap::new();
+    let username = whoami::username();
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let path = r#"SOFTWARE\Microsoft\Cryptography"#;
+    let key = hklm.open_subkey(&path);
+    if key.is_err() {
+        return headers;
+    }
+
+    let key = key.unwrap();
+    let mac_guid = key.get_value::<String, _>("MachineGuid");
+    let raw_device_id = format!("{}{}", username, mac_guid.unwrap());
+    let hutao_device_id = run_md5_hash(raw_device_id.as_str());
+    headers.insert(
+        "x-hutao-device-id",
+        header::HeaderValue::from_str(hutao_device_id.to_ascii_uppercase().as_str()).unwrap(),
+    );
+
+    headers
 }
 
 fn main() {

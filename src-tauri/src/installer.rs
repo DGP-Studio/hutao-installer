@@ -4,7 +4,7 @@ use crate::{
     utils::{
         cert::{find_certificate, install_certificate},
         dir::get_desktop,
-        hash::run_hash,
+        hash::run_sha256_file_hash_async,
         package_manager::{add_package, try_get_hutao_version},
         uac::run_elevated,
     },
@@ -226,7 +226,7 @@ pub async fn install_package(
 ) -> Result<(), String> {
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
-    let hash = run_hash(installer_path.to_str().unwrap()).await;
+    let hash = run_sha256_file_hash_async(installer_path.to_str().unwrap()).await;
     if hash.is_err() {
         return Err(format!("Failed to hash installer: {:?}", hash.err()));
     }
@@ -254,6 +254,7 @@ pub async fn install_package(
 
 #[tauri::command]
 pub async fn create_desktop_lnk() -> Result<(), String> {
+    // TODO
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
     let desktop = get_desktop().unwrap();
     let lnk = format!(r#"{}\Snap Hutao.lnk"#, desktop);

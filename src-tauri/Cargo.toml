@@ -70,6 +70,8 @@ futures = "0.3.31"
 async-compression = { version = "0.4", features = ["tokio"] }
 async-walkdir = "2.0"
 uuid = { version = "1.12.0", features = ["v4"] }
+whoami = "1.5.2"
+chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
 
 [[bin]]
 name = "hutao-installer"

@@ -636,7 +636,7 @@ onMounted(async () => {
   if (config.is_update && config.curr_version) {
     let local = Version.parse(config.curr_version);
     let remote = Version.parse(patch_data.version);
-    if (true || remote.compare(local) <= 0) {
+    if (remote.compare(local) <= 0) {
       step.value = 6;
       init.value = true;
       return;
