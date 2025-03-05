@@ -43,13 +43,14 @@ pub async fn add_package(
     > = package_manager.AddPackageByUriAsync(&package_uri, &options)?;
     let progress_sink: AsyncOperationProgressHandler<DeploymentResult, DeploymentProgress> =
         AsyncOperationProgressHandler::new(move |_, progress: &DeploymentProgress| {
+            dbg!(progress.percentage);
             let _ = handler(serde_json::json!(progress.percentage));
             Ok(())
         });
     let _ = op.SetProgress(&progress_sink);
-    let res = op.GetResults()?;
+    let res = op.get()?;
 
-    if res.IsRegistered()? || res.ExtendedErrorCode()? == HRESULT(0) {
+    if res.IsRegistered()? {
        Ok(true)
     } else {
         Err(Error::from_hresult(res.ExtendedErrorCode()?))
