@@ -79,18 +79,18 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
 }
 
 #[tauri::command]
-pub async fn speedtest_1mb(url: String) -> Result<f64, String> {
+pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     let start = Instant::now();
     let res = REQUEST_CLIENT
         .get(&url)
-        .header("Range", "bytes=0-1048575")
+        .header("Range", "bytes=0-5242875")
         .send()
         .await;
     let elapsed = start.elapsed().as_millis();
     if res.is_err() {
         return Ok((-1.0) as f64);
     }
-    Ok(1.0 / ((elapsed as f64) / (1000 as f64)))
+    Ok(5.0 / ((elapsed as f64) / (1000 as f64)))
 }
 
 #[tauri::command]
@@ -101,9 +101,23 @@ pub async fn head_package(mirror_url: String) -> Result<u64, String> {
     }
 
     let res = res.unwrap();
-    let len = res.content_length();
+    let headers = res.headers();
+    let len = headers.get("content-length");
     if len.is_none() {
         return Err("Failed to get content length".to_string());
+    }
+
+    let len = len.unwrap().to_str();
+    if len.is_err() {
+        return Err(format!("Failed to parse content length: {:?}", len.err()));
+    }
+
+    let len = len.unwrap();
+
+    dbg!(len);
+    let len = len.parse::<u64>();
+    if len.is_err() {
+        return Err(format!("Failed to parse content length: {:?}", len.err()));
     }
 
     Ok(len.unwrap())
@@ -190,10 +204,14 @@ pub async fn install_vcrt(id: String, window: tauri::WebviewWindow) -> Result<()
 
 #[tauri::command]
 pub async fn check_globalsign_r45(window: WebviewWindow) -> Result<(), String> {
-    if let Ok(found) = find_certificate("GlobalSign Code Signing Root R45").await {
-        if found {
-            return Ok(());
-        }
+    let find_res = find_certificate("BE, GlobalSign nv-sa, GlobalSign Code Signing Root R45").await;
+    if find_res.is_err() {
+        return Err(format!("Failed to find certificate: {:?}", find_res.err()));
+    }
+
+    let found = find_res.unwrap();
+    if found {
+        return Ok(());
     }
 
     let url = "https://secure.globalsign.com/cacert/codesigningrootr45.crt";

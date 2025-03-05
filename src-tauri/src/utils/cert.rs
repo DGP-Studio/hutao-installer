@@ -1,13 +1,16 @@
 use std::ffi::CString;
 use tokio_util::bytes::Bytes;
-use windows::{core::s, Win32::Security::Cryptography::*};
+use windows::{
+    core::s,
+    Win32::Security::Cryptography::*,
+};
 
 pub async fn find_certificate(subject: &str) -> Result<bool, String> {
     unsafe {
-        let store_name = s!("ROOT").as_ptr();
+        let store_name = s!("Root").as_ptr();
         let h_store = CertOpenStore(
             CERT_STORE_PROV_SYSTEM_A,
-            CERT_QUERY_ENCODING_TYPE(0),
+            X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
             None,
             CERT_OPEN_STORE_FLAGS(CERT_SYSTEM_STORE_LOCAL_MACHINE),
             Some(store_name as _),
@@ -22,22 +25,33 @@ pub async fn find_certificate(subject: &str) -> Result<bool, String> {
             return Err("Failed to open store".to_string());
         }
 
-        let subject_cstr = CString::new(subject).expect("Failed to convert subject to CString");
+        let mut cert: *mut CERT_CONTEXT = std::ptr::null_mut();
+        cert = CertEnumCertificatesInStore(h_store, Some(cert));
 
-        let cert = CertFindCertificateInStore(
-            h_store,
-            X509_ASN_ENCODING,
-            0,
-            CERT_FIND_SUBJECT_STR,
-            Some(subject_cstr.as_ptr() as _),
-            None,
-        );
+        while !cert.is_null() {
+            let subj = cert.read().pCertInfo.read().Subject;
+            let mut buffer = vec![0u8; 256];
+            let len = CertNameToStrA(
+                X509_ASN_ENCODING,
+                &subj,
+                CERT_SIMPLE_NAME_STR,
+                Some(&mut buffer)
+            );
+            buffer.resize(len as usize, 0);
+            let sub_str = CString::from_vec_unchecked(buffer);
+            if sub_str.to_string_lossy().contains(subject) {
+                break;
+            }
+
+            cert = CertEnumCertificatesInStore(h_store, Some(cert));
+        }
 
         let found = !cert.is_null();
         if found {
             let _ = CertFreeCertificateContext(Some(cert));
         }
 
+        let _ = CertCloseStore(h_store, 0);
         Ok(found)
     }
 }
@@ -50,7 +64,7 @@ pub async fn install_certificate(
         let store_name = s!("ROOT").as_ptr();
         let h_store = CertOpenStore(
             CERT_STORE_PROV_SYSTEM_A,
-            CERT_QUERY_ENCODING_TYPE(0),
+            X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
             None,
             CERT_OPEN_STORE_FLAGS(CERT_SYSTEM_STORE_LOCAL_MACHINE),
             Some(store_name as _),
@@ -71,16 +85,16 @@ pub async fn install_certificate(
         }
 
         let title = "安装证书".to_string();
-        let message = r#"
-        正在向 本地计算机/受信任的根证书颁发机构 添加证书
-        如果你无法理解弹窗中的文本，请点击 [是]
+        let message = r#"正在向 本地计算机/受信任的根证书颁发机构 添加证书
+如果你无法理解弹窗中的文本，请点击 [是]
 
-        Adding certificate to LocalMachine/ThirdParty Root CA store,
-        please click [yes] on the [Security Waring] dialog
+Adding certificate to LocalMachine/ThirdParty Root CA store,
+please click [yes] on the [Security Waring] dialog
 
-        关于更多安全信息，请查看下方的网址
-        For more security information, please visit the url down below
-        https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root-certificates"#.to_string();
+关于更多安全信息，请查看下方的网址
+For more security information, please visit the url down below
+https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root-certificates"#
+            .to_string();
 
         rfd::MessageDialog::new()
             .set_title(&title)
@@ -101,6 +115,7 @@ pub async fn install_certificate(
             ));
         }
 
+        let _ = CertCloseStore(h_store, 0);
         Ok(true)
     }
 }

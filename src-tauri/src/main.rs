@@ -152,7 +152,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::message_dialog,
             installer::get_config,
             installer::open_tos,
-            installer::speedtest_1mb,
+            installer::speedtest_5mb,
             installer::head_package,
             installer::download_package,
             installer::check_vcrt,
@@ -175,7 +175,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             .resizable(false)
             .maximizable(false)
             .transparent(true)
-            .inner_size(520.0, 350.0)
+            .inner_size(650.0, 350.0)
             .center();
             if !cfg!(debug_assertions) {
                 main_window = main_window.data_directory(temp_dir_for_data).visible(false);

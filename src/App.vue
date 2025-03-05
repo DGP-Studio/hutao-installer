@@ -157,10 +157,10 @@
 }
 
 .image {
-  min-width: 200px;
-  width: 200px;
+  min-width: 280px;
+  width: 280px;
   box-sizing: border-box;
-  padding: 6px 6px 6px 6px;
+  padding:8px;
 
   img {
     width: 100%;
@@ -171,11 +171,11 @@
 
 .right {
   position: relative;
-  width: calc(100% - 188px);
+  width: calc(100% - 280px);
   text-align: left;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 32px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -613,7 +613,7 @@ function onItemClick(item: GenericPatchPackageMirror): void {
 async function testMirrorSpeed(): Promise<void> {
   const testers = [];
   for (const mirror of mirrors.value) {
-    testers.push(invoke<number>('speedtest_1mb', { url: mirror.url }).then(s => mirror.speed = s));
+    testers.push(invoke<number>('speedtest_5mb', { url: mirror.url }).then(s => mirror.speed = s));
   }
 
   await Promise.all(testers);
