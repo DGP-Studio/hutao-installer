@@ -28,13 +28,13 @@
         </div>
         <div class="login" v-if="step === 2">
           <div class="desc">如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验</div>
-          <textarea class="textarea" v-model="homaUsername" placeholder="用户名"></textarea>
-          <textarea class="textarea textarea-password" v-model="homaPassword" placeholder="密码"></textarea>
+          <input type="email" class="account-input" v-model="homaUsername" placeholder="用户名"></input>
+          <input type="password" class="account-input textarea-password" v-model="homaPassword" placeholder="密码" />
           <div class="btn-container">
             <button class="btn btn-login" @click="loginSkip">跳过</button>
             <button class="btn btn-login" @click="login"
               :disabled="!emailRegex.test(homaUsername) || homaPassword.length === 0 || logging_in">
-              <div v-if="!logging_in">登录</div>
+              <span v-if="!logging_in">登录</span>
               <span v-if="logging_in" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail"></span>
               </span>
@@ -133,7 +133,7 @@
   line-height: 1.4;
 }
 
-.textarea {
+.account-input {
   width: 100%;
   height: 32px;
   padding: 6px;
@@ -146,10 +146,9 @@
   opacity: 0.8;
   margin-left: 10px;
   margin-top: 4px;
-  font-family:
-    Consolas,
-    'Courier New',
-    Microsoft Yahei;
+  font-family: Consolas, 'Courier New', Microsoft Yahei, serif;
+  border: unset;
+  outline: none;
 }
 
 .textarea-password {
