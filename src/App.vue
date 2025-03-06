@@ -7,87 +7,143 @@
     </div>
     <div v-show="init" class="content">
       <div class="image">
-        <img src="./hutao.png" />
+        <img src="/hutao.png" alt="logo" />
       </div>
       <div class="right">
-        <div class="title">Snap Hutao</div>
-        <div class="desc">实用的开源多功能原神工具箱 🧰</div>
+        <div class="title">
+          <span>Snap Hutao</span>
+          <LocaleSwitch />
+        </div>
+        <div class="desc">{{ t('实用的开源多功能原神工具箱 🧰') }}</div>
         <div v-if="step === 1" class="actions">
           <div v-if="!CONFIG.is_update" class="lnk">
             <Checkbox v-model="createLnk" />
-            创建桌面快捷方式
+            <span>{{ t('创建桌面快捷方式') }}</span>
           </div>
           <div v-if="!CONFIG.is_update" class="read">
             <Checkbox v-model="acceptEula" />
-            我已阅读并同意
-            <a @click="openTos"> 用户协议 </a>
+            <span>{{ t('我已阅读并同意') }}</span>
+            <a @click="openTos"> {{ t('用户协议') }} </a>
           </div>
-          <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
-            开始
+          <button
+            class="btn btn-install"
+            @click="start"
+            :disabled="!CONFIG.is_update && !acceptEula"
+          >
+            <span>{{ t('开始') }}</span>
           </button>
         </div>
         <div class="login" v-if="step === 2">
-          <div class="desc">如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验</div>
-          <input type="email" class="account-input" v-model="homaUsername" placeholder="用户名"></input>
-          <input type="password" class="account-input textarea-password" v-model="homaPassword" placeholder="密码" />
+          <div class="desc">
+            {{
+              t(
+                '如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验',
+              )
+            }}
+          </div>
+          <input
+            type="email"
+            class="account-input"
+            v-model="homaUsername"
+            :placeholder="t('用户名')"
+          />
+          <input
+            type="password"
+            class="account-input textarea-password"
+            v-model="homaPassword"
+            :placeholder="t('密码')"
+          />
           <div class="btn-container">
-            <button class="btn btn-login" @click="loginSkip">跳过</button>
-            <button class="btn btn-login" @click="login"
-              :disabled="!emailRegex.test(homaUsername) || homaPassword.length === 0 || logging_in">
-              <span v-if="!logging_in">登录</span>
+            <button class="btn btn-login" @click="loginSkip">
+              {{ t('跳过') }}
+            </button>
+            <button
+              class="btn btn-login"
+              @click="login"
+              :disabled="
+                !emailRegex.test(homaUsername) ||
+                homaPassword.length === 0 ||
+                logging_in
+              "
+            >
+              <span v-if="!logging_in">{{ t('登录') }}</span>
               <span v-if="logging_in" class="fui-Spinner__spinner">
-                <span class="fui-Spinner__spinnerTail"></span>
+                <span class="fui-Spinner__spinnerTail" />
               </span>
             </button>
           </div>
         </div>
         <div class="choose-mirror" v-if="step === 3">
           <div class="choose-mirror-desc">
-            <div class="desc">选择一个镜像源</div>
+            <div class="desc">{{ t('选择一个镜像源') }}</div>
             <div class="listview">
-              <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
-                :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
-                <div class="left-indicator"></div>
+              <div
+                v-for="(item, index) in mirrors"
+                :key="index"
+                class="listview-item"
+                :class="{ selected: selectedMirror === item }"
+                @click="onItemClick(item)"
+              >
+                <div class="left-indicator" />
                 <div class="mirror-item">
                   <span>{{ item.mirror_name }}</span>
-                  <span>{{ item.speed == -1 ? "timeout" : `${item.speed?.toFixed(2)} MB/s` }}</span>
+                  <span>
+                    {{
+                      item.speed == -1
+                        ? 'timeout'
+                        : `${item.speed?.toFixed(2)} MB/s`
+                    }}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-          <button class="btn btn-install" @click="install" :disabled="!selectedMirror">
-            {{ CONFIG.is_update ? '更新' : '安装' }}
+          <button
+            class="btn btn-install"
+            @click="install"
+            :disabled="!selectedMirror"
+          >
+            {{ CONFIG.is_update ? t('更新') : t('安装') }}
           </button>
         </div>
         <div class="progress" v-if="step === 4">
           <div class="step-desc">
-            <div v-for="(i, a) in subStepList" class="substep" :class="{ done: a < subStep }" v-show="a <= subStep"
-              :key="i">
+            <div
+              v-for="(i, a) in subStepList"
+              class="substep"
+              :class="{ done: a < subStep }"
+              v-show="a <= subStep"
+              :key="i"
+            >
               <span v-if="a === subStep" class="fui-Spinner__spinner">
-                <span class="fui-Spinner__spinnerTail"></span>
+                <span class="fui-Spinner__spinnerTail" />
               </span>
               <span v-else class="substep-done">
                 <CircleSuccess />
               </span>
-              <div>{{ i }}</div>
+              <div>{{ t(i) }}</div>
             </div>
           </div>
-          <div class="current-status" v-html="current"></div>
-          <div class="progress-bar" :style="{ width: `${percent}%` }"></div>
+          <div class="current-status" v-html="current" />
+          <div class="progress-bar" :style="{ width: `${percent}%` }" />
         </div>
         <div class="finish" v-if="step === 5">
           <div class="finish-text">
             <CircleSuccess />
-            {{ CONFIG.is_update ? '更新' : '安装' }}完成
+            <span>{{ CONFIG.is_update ? t('更新完成') : t('安装完成') }}</span>
           </div>
-          <button class="btn btn-install" @click="launch">启动</button>
+          <button class="btn btn-install" @click="launch">
+            {{ t('启动') }}
+          </button>
         </div>
         <div class="finish" v-if="step === 6">
           <div class="finish-text">
             <CircleSuccess />
-            您已安装最新版本
+            <span>{{ t('您已安装最新版本') }}</span>
           </div>
-          <button class="btn btn-install" @click="launch">启动</button>
+          <button class="btn btn-install" @click="launch">
+            {{ t('启动') }}
+          </button>
         </div>
       </div>
     </div>
@@ -146,7 +202,11 @@
   opacity: 0.8;
   margin-left: 10px;
   margin-top: 4px;
-  font-family: Consolas, 'Courier New', Microsoft Yahei, serif;
+  font-family:
+    Consolas,
+    'Courier New',
+    Microsoft Yahei,
+    serif;
   border: unset;
   outline: none;
 }
@@ -159,7 +219,7 @@
   min-width: 280px;
   width: 280px;
   box-sizing: border-box;
-  padding:8px;
+  padding: 8px;
 
   img {
     width: 100%;
@@ -180,8 +240,14 @@
 }
 
 .title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   font-size: 25px;
-  padding: 2px 10px 6px;
+  padding: 2px 10px;
+  column-gap: 4px;
+  line-height: 28px;
 }
 
 .btn-container {
@@ -290,7 +356,7 @@
 }
 
 .choose-mirror-desc {
-  padding: 14px 0px;
+  padding: 14px 0;
   font-size: 14px;
   display: flex;
   flex-direction: column;
@@ -366,12 +432,13 @@
 
 .left-indicator {
   width: 4px;
-  height: 0px;
+  height: 0;
   opacity: 0;
   background-color: #0f6cbd;
   margin-right: 8px;
   border-radius: 2px;
-  transition: height 0.1s ease,
+  transition:
+    height 0.1s ease,
     opacity 0.1s ease;
 }
 
@@ -397,13 +464,23 @@
 </style>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { useI18n } from 'vue-i18n';
+import { onMounted, reactive, ref } from 'vue';
 import { getCurrentWindow, invoke, listen } from './tauri';
-import Checkbox from './Checkbox.vue';
-import CircleSuccess from './CircleSuccess.vue';
+import Checkbox from './components/Checkbox.vue';
+import CircleSuccess from './components/CircleSuccess.vue';
 import { v4 as uuid } from 'uuid';
-import { fetchIsOversea, fetchPatchData, GetCdnUrl, IsCdnAvailable, LoadToken, LoginHomaPassport } from "./api";
+import {
+  fetchIsOversea,
+  fetchPatchData,
+  GetCdnUrl,
+  IsCdnAvailable,
+  LoadToken,
+  LoginHomaPassport,
+} from './api';
+import LocaleSwitch from './components/LocaleSwitch.vue';
 
+const { t } = useI18n();
 const init = ref(false);
 
 const subStepList: ReadonlyArray<string> = [
@@ -473,7 +550,7 @@ async function start(): Promise<void> {
 
 async function login(): Promise<void> {
   logging_in.value = true;
-  if (!await LoginHomaPassport(homaUsername.value, homaPassword.value)) {
+  if (!(await LoginHomaPassport(homaUsername.value, homaPassword.value))) {
     logging_in.value = false;
     return;
   }
@@ -482,9 +559,9 @@ async function login(): Promise<void> {
     await install();
   } else {
     await invoke('message_dialog', {
-      title: '无 CDN 权限',
-      message: '未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包',
-    })
+      title: t('无 CDN 权限'),
+      message: t('未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包'),
+    });
     step.value = 3;
   }
   logging_in.value = false;
@@ -496,21 +573,23 @@ async function loginSkip(): Promise<void> {
 
 async function install(): Promise<void> {
   step.value = 4;
-  current.value = '准备下载……';
+  current.value = t('准备下载……');
   let mirror_url;
   try {
-    if(isCdnAvailable.value) mirror_url = await GetCdnUrl();
+    if (isCdnAvailable.value) mirror_url = await GetCdnUrl();
     else mirror_url = selectedMirror.value!.url;
   } catch (e) {
     alert(e);
   }
-  if(!mirror_url) {
+  if (!mirror_url) {
     step.value = 3;
     return;
   }
   console.log(mirror_url);
   let total_downloaded_size = 0;
-  const total_size = await invoke<number>('head_package', { "mirrorUrl": mirror_url });
+  const total_size = await invoke<number>('head_package', {
+    mirrorUrl: mirror_url,
+  });
   let stat: InstallStat = {
     speedLastSize: 0,
     lastTime: performance.now(),
@@ -536,31 +615,33 @@ async function install(): Promise<void> {
   let id = uuid();
   let unlisten = await listen<[number, number]>(id, ({ payload }) => {
     total_downloaded_size = payload[0];
-  })
-  await invoke('download_package', { "mirrorUrl": mirror_url, "id": id });
+  });
+  await invoke('download_package', { mirrorUrl: mirror_url, id: id });
   unlisten();
   clearInterval(progressInterval.value);
   percent.value = 40;
   subStep.value = 1;
-  current.value = '正在检查 MSVC 运行库……';
+  current.value = t('正在检查 MSVC 运行库……');
   let is_vcrt_installed = await invoke<boolean>('check_vcrt');
   if (!is_vcrt_installed) {
-    current.value = '正在安装 MSVC 运行库……';
+    current.value = t('正在安装 MSVC 运行库……');
     id = uuid();
     unlisten = await listen<[number, number]>(id, ({ payload }) => {
       const currentSize = formatSize(payload[0]);
       const targetSize = payload[1] ? formatSize(payload[1]) : '';
       if (payload[0] >= payload[1] - 1) {
-        current.value = `安装 MSVC 运行库……`;
+        current.value = t('安装 MSVC 运行库……');
       } else {
-        current.value = `下载 MSVC 运行库 ……<br>${currentSize}${targetSize ? ` / ${targetSize}` : ''}`;
+        current.value = t('下载 MSVC 运行库 ……x', [
+          `<br>${currentSize}${targetSize ? ` / ${targetSize}` : ''}`,
+        ]);
       }
-    })
-    await invoke('install_vcrt', { "id": id });
+    });
+    await invoke('install_vcrt', { id: id });
     unlisten();
   }
   percent.value = 50;
-  current.value = '正在检查 GlobalSign Code Signing Root R45 证书……';
+  current.value = t('正在检查 GlobalSign Code Signing Root R45 证书……');
   try {
     await invoke('check_globalsign_r45');
   } catch (e) {
@@ -569,23 +650,23 @@ async function install(): Promise<void> {
   }
   percent.value = 60;
   subStep.value = 2;
-  current.value = '正在部署包……';
+  current.value = t('正在部署包……');
   id = uuid();
   unlisten = await listen<number>(id, ({ payload }) => {
     current.value = `
-      <span class="d-single-stat">部署进度: ${payload} %</span>
+      <span class="d-single-stat">${t('部署进度')}: ${payload} %</span>
     `;
     percent.value = 60 + payload * 0.39;
-  })
+  });
   try {
-    await invoke('install_package', {"sha256": sha256.value, "id": id});
-  } catch(e) {
+    await invoke('install_package', { sha256: sha256.value, id: id });
+  } catch (e) {
     alert(e);
   }
   unlisten();
 
   percent.value = 99;
-  current.value = '很快就好……';
+  current.value = t('很快就好……');
 
   if (createLnk.value) {
     try {
@@ -596,7 +677,7 @@ async function install(): Promise<void> {
   }
   await invoke('clear_temp_dir');
 
-  current.value = '安装完成';
+  current.value = t('安装完成');
   step.value = 5;
   percent.value = 100;
 }
@@ -612,11 +693,17 @@ function onItemClick(item: GenericPatchPackageMirror): void {
 async function testMirrorSpeed(): Promise<void> {
   const testers = [];
   for (const mirror of mirrors.value) {
-    testers.push(invoke<number>('speedtest_5mb', { url: mirror.url }).then(s => mirror.speed = s));
+    testers.push(
+      invoke<number>('speedtest_5mb', { url: mirror.url }).then(
+        (s) => (mirror.speed = s),
+      ),
+    );
   }
 
   await Promise.all(testers);
-  mirrors.value = mirrors.value.sort((a, b) => (b.speed ?? -1) - (a.speed ?? -1));
+  mirrors.value = mirrors.value.sort(
+    (a, b) => (b.speed ?? -1) - (a.speed ?? -1),
+  );
   selectedMirror.value = mirrors.value[0];
 }
 
@@ -642,9 +729,9 @@ onMounted(async () => {
     }
   }
 
-  testMirrorSpeed();
+  testMirrorSpeed().catch((e) => alert(e));
   init.value = true;
-})
+});
 
 function formatSize(size: number): string {
   if (size < 1024) {
@@ -666,7 +753,7 @@ class Version {
     major: number,
     minor: number,
     build: number | undefined,
-    revision: number | undefined
+    revision: number | undefined,
   ) {
     this.major = major;
     this.minor = minor;
@@ -679,7 +766,7 @@ class Version {
   }
 
   static parse(version: string) {
-    const [major, minor, build, revision] = version.split(".").map(Number);
+    const [major, minor, build, revision] = version.split('.').map(Number);
     return new Version(major, minor, build, revision);
   }
 
@@ -696,6 +783,4 @@ class Version {
     return this.revision - other.revision;
   }
 }
-
-
 </script>

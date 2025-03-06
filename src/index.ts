@@ -1,8 +1,9 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./index.css";
+import i18n from './i18n';
 
-createApp(App).mount("#root");
+createApp(App).use(i18n).mount("#root");
 
 if (process.env.NODE_ENV !== "development") {
   window.addEventListener("contextmenu", (e) => {
