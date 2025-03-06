@@ -1,15 +1,33 @@
 import { createI18n } from 'vue-i18n';
+
 import chs from './chs.json';
-import en from './en.json';
 import cht from './cht.json';
-import jp from './jp.json';
+import en from './en.json';
+import ja from './ja.json';
+
+const getLocale = () => {
+  const locale = navigator.language || 'en';
+  if (locale.includes('-')) {
+    const lang = locale.split('-')[0];
+    if (lang.startsWith('zh')) {
+      const region = locale.split('-')[1];
+      if (region.startsWith('TW') || region.startsWith('HK')) {
+        return 'cht';
+      }
+
+      return 'chs';
+    }
+  }
+
+  return locale;
+};
 
 const i18n = createI18n({
   legacy: false,
-  locale: 'chs',
-  messages: { chs, en, cht, jp },
+  locale: getLocale(),
+  messages: { chs, cht, en, ja },
   globalInjection: true,
-  fallbackLocale: 'chs',
+  fallbackLocale: 'en',
 });
 
 export default i18n;

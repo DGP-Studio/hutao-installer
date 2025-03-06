@@ -12,7 +12,6 @@
       <div class="right">
         <div class="title">
           <span>Snap Hutao</span>
-          <LocaleSwitch />
         </div>
         <div class="desc">{{ t('实用的开源多功能原神工具箱 🧰') }}</div>
         <div v-if="step === 1" class="actions">
@@ -22,14 +21,12 @@
           </div>
           <div v-if="!CONFIG.is_update" class="read">
             <Checkbox v-model="acceptEula" />
-            <span>{{ t('我已阅读并同意') }}</span>
-            <a @click="openTos"> {{ t('用户协议') }} </a>
+            <span>
+              {{ t('我已阅读并同意') }}
+              <a @click="openTos"> {{ t('用户协议') }} </a>
+            </span>
           </div>
-          <button
-            class="btn btn-install"
-            @click="start"
-            :disabled="!CONFIG.is_update && !acceptEula"
-          >
+          <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
             <span>{{ t('开始') }}</span>
           </button>
         </div>
@@ -41,31 +38,17 @@
               )
             }}
           </div>
-          <input
-            type="email"
-            class="account-input"
-            v-model="homaUsername"
-            :placeholder="t('用户名')"
-          />
-          <input
-            type="password"
-            class="account-input textarea-password"
-            v-model="homaPassword"
-            :placeholder="t('密码')"
-          />
+          <input type="email" class="account-input" v-model="homaUsername" :placeholder="t('用户名')" />
+          <input type="password" class="account-input textarea-password" v-model="homaPassword"
+            :placeholder="t('密码')" />
           <div class="btn-container">
             <button class="btn btn-login" @click="loginSkip">
               {{ t('跳过') }}
             </button>
-            <button
-              class="btn btn-login"
-              @click="login"
-              :disabled="
-                !emailRegex.test(homaUsername) ||
-                homaPassword.length === 0 ||
-                logging_in
-              "
-            >
+            <button class="btn btn-login" @click="login" :disabled="!emailRegex.test(homaUsername) ||
+              homaPassword.length === 0 ||
+              logging_in
+              ">
               <span v-if="!logging_in">{{ t('登录') }}</span>
               <span v-if="logging_in" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
@@ -77,13 +60,8 @@
           <div class="choose-mirror-desc">
             <div class="desc">{{ t('选择一个镜像源') }}</div>
             <div class="listview">
-              <div
-                v-for="(item, index) in mirrors"
-                :key="index"
-                class="listview-item"
-                :class="{ selected: selectedMirror === item }"
-                @click="onItemClick(item)"
-              >
+              <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
+                :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
                 <div class="left-indicator" />
                 <div class="mirror-item">
                   <span>{{ item.mirror_name }}</span>
@@ -98,23 +76,14 @@
               </div>
             </div>
           </div>
-          <button
-            class="btn btn-install"
-            @click="install"
-            :disabled="!selectedMirror"
-          >
+          <button class="btn btn-install" @click="install" :disabled="!selectedMirror">
             {{ CONFIG.is_update ? t('更新') : t('安装') }}
           </button>
         </div>
         <div class="progress" v-if="step === 4">
           <div class="step-desc">
-            <div
-              v-for="(i, a) in subStepList"
-              class="substep"
-              :class="{ done: a < subStep }"
-              v-show="a <= subStep"
-              :key="i"
-            >
+            <div v-for="(i, a) in subStepList" class="substep" :class="{ done: a < subStep }" v-show="a <= subStep"
+              :key="i">
               <span v-if="a === subStep" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
@@ -478,7 +447,6 @@ import {
   LoadToken,
   LoginHomaPassport,
 } from './api';
-import LocaleSwitch from './components/LocaleSwitch.vue';
 
 const { t } = useI18n();
 const init = ref(false);
