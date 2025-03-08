@@ -88,12 +88,11 @@ fn main() {
         return;
     }
 
-    // TODO: bypass elevation
-    // let elevated = check_elevated().unwrap_or(false);
-    // if !elevated {
-    //     let _ = run_elevated(std::env::current_exe().unwrap(), cli.command_as_str());
-    //     return;
-    // }
+    let elevated = check_elevated().unwrap_or(false);
+    if !elevated {
+        let _ = run_elevated(std::env::current_exe().unwrap(), cli.command_as_str());
+        return;
+    }
 
     match command {
         Command::Install => {

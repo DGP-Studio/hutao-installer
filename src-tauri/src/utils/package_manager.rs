@@ -7,8 +7,6 @@ use windows::{
 };
 
 pub async fn try_get_hutao_version() -> Result<Option<String>> {
-    // TODO: bypass elevation
-    return Ok(None);
     let package_manager = PackageManager::new()?;
     let package_family_name = HSTRING::from("60568DGPStudio.SnapHutao_wbnnev551gwxy".to_string());
     let packages = package_manager.FindPackagesByPackageFamilyName(&package_family_name)?;
