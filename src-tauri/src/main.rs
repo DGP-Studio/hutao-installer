@@ -150,6 +150,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::error_dialog,
             installer::message_dialog,
             installer::get_config,
+            installer::get_changelog,
             installer::open_tos,
             installer::speedtest_5mb,
             installer::head_package,

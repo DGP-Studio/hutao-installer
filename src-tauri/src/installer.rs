@@ -79,6 +79,26 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
 }
 
 #[tauri::command]
+pub async fn get_changelog() -> Result<String, String> {
+    let url = "https://api.qhy04.com/hutaocdn/changelog";
+    let res = REQUEST_CLIENT
+        .get(url)
+        .send()
+        .await;
+    if res.is_err() {
+        return Err(format!("Failed to send http request: {:?}", res.err()));
+    }
+
+    let res = res.unwrap();
+    let ctnt = res.text().await;
+    if ctnt.is_err() {
+        return Err(format!("Failed to get response content: {:?}", ctnt.err()));
+    }
+
+    Ok(ctnt.unwrap())
+}
+
+#[tauri::command]
 pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     let start = Instant::now();
     let res = REQUEST_CLIENT

@@ -26,6 +26,10 @@
               <a @click="openTos"> {{ t('用户协议') }} </a>
             </span>
           </div>
+          <div v-if="CONFIG.is_update" class="update-info">
+            <span>更新信息: {{ version_info }}</span>
+            <vue-markdown :source="changelog" class="changelog" />
+          </div>
           <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
             <span>{{ t('开始') }}</span>
           </button>
@@ -223,9 +227,9 @@
   display: flex;
   position: absolute;
   height: 40px;
-  width: 248px;
+  width: 266px;
   margin-left: 10px;
-  bottom: 20px;
+  bottom: 36px;
   gap: 10px;
 
   .fui-Spinner__spinner {
@@ -238,16 +242,14 @@
 .btn-login {
   height: 40px;
   width: 140px;
-  bottom: 20px;
-  right: 8px;
 }
 
 .btn-install {
   height: 40px;
   width: 140px;
   position: absolute;
-  bottom: 20px;
-  right: 8px;
+  bottom: 36px;
+  right: 22px;
 }
 
 .actions,
@@ -269,6 +271,25 @@
   a {
     cursor: pointer;
   }
+}
+
+.update-info {
+  padding-left: 12px;
+  display: flex;
+  line-height: 1.4;
+  font-size: 13px;
+  gap: 8px;
+  flex-direction: column;
+}
+
+.changelog {
+  overflow-y: auto;
+  margin-left: -24px;
+  height: 140px;
+}
+
+.changelog::-webkit-scrollbar {
+  display: none;
 }
 
 .more {
@@ -433,6 +454,7 @@
 </style>
 
 <script setup lang="ts">
+import VueMarkdown from 'vue-markdown-render';
 import { useI18n } from 'vue-i18n';
 import { onMounted, reactive, ref } from 'vue';
 import { getCurrentWindow, invoke, listen } from './tauri';
@@ -482,6 +504,8 @@ const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
 const isCdnAvailable = ref<boolean>(false);
 const isOversea = ref<boolean>(false);
 const logging_in = ref<boolean>(false);
+const version_info = ref<string>('');
+const changelog = ref<string>('');
 
 const CONFIG: Config = reactive({
   is_update: false,
@@ -695,6 +719,9 @@ onMounted(async () => {
       init.value = true;
       return;
     }
+
+    version_info.value = `${local.toString()} -> ${remote.toString()}`;
+    changelog.value = await invoke<string>('get_changelog');
   }
 
   testMirrorSpeed().catch((e) => alert(e));
