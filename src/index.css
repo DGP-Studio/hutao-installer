@@ -732,3 +732,13 @@ a:hover {
 .progress-bar {
   background: var(--colorBrandForeground1);
 }
+
+::-webkit-scrollbar-thumb {
+  min-height: 24px;
+  border-radius: 4px;
+  background: #abb2bf;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--colorBrandForeground1);
+}

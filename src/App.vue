@@ -288,12 +288,16 @@
   height: 140px;
 
   ::v-deep(h3) {
+    margin-top: 0;
     margin-left: 20px;
   }
 }
 
 .changelog::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background: transparent;
 }
 
 .more {
@@ -726,7 +730,7 @@ onMounted(async () => {
     }
 
     version_info.value = `${local.toString()} -> ${remote.toString()}`;
-    changelog.value = await invoke<string>('get_changelog', {'lang': getLang(), 'from': local.toString()});
+    changelog.value = await invoke<string>('get_changelog', { 'lang': getLang(), 'from': local.toString() });
   }
 
   testMirrorSpeed().catch((e) => alert(e));
