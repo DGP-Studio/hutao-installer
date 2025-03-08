@@ -1,5 +1,5 @@
 use windows::{
-    core::{Error, Result, HSTRING,HRESULT},
+    core::{Error, Result, HSTRING},
     Foundation::{AsyncOperationProgressHandler, Uri},
     Management::Deployment::{
         AddPackageOptions, DeploymentProgress, DeploymentResult, PackageManager,
