@@ -62,7 +62,7 @@ jobs:
           path: src/Snap.Hutao.Deployment.Runtime
       - name: Update nuspec
         run: |
-          $tag = ${{ github.ref_name }}
+          $tag = "${{ github.ref_name }}"
           (Get-Content ./src/Snap.Hutao.Deployment.Runtime/Snap.Hutao.Deployment.Runtime.nuspec -Raw) -replace '(?m)(<version>\d+\.\d+\.\d+</version>)', "<version>$tag</version>" | Set-Content ./src/Snap.Hutao.Deployment.Runtime/Snap.Hutao.Deployment.Runtime.nuspec -Encoding utf8
       - name: Push
         run: |
