@@ -38,7 +38,34 @@ jobs:
           (Get-Content ./src-tauri/Cargo.toml -Raw) -replace '(?m)^(version = "\d+\.\d+\.\d+)', "version = `"$TAG-$PKGVER+$BUILDMETA" | Set-Content ./src-tauri/Cargo.toml -Encoding utf8
       - name: Build
         run: pnpm build
+      - name: Copy Binary
+        run: copy src-tauri/target/release/hutao-installer.exe Snap.Hutao.Deployment.exe
       - name: Artifact
         uses: actions/upload-artifact@v4.6.0
         with:
-          path: src-tauri/target/release/*.exe
+          name: deployment
+          path: Snap.Hutao.Deployment.exe
+  sync:
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: DGP-Studio/Snap.Hutao.Deployment
+          token: ${{ secrets.TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: deployment
+          path: src/Snap.Hutao.Deployment.Runtime
+      - name: Update nuspec
+        run: |
+          $tag = ${{ github.ref_name }}
+          (Get-Content ./src/Snap.Hutao.Elevated.Launcher.Runtime/Snap.Hutao.Elevated.Launcher.Runtime.nuspec -Raw) -replace '(?m)(<version>\d+\.\d+\.\d+</version>)', "<version>$tag</version>" | Set-Content ./src/Snap.Hutao.Elevated.Launcher.Runtime/Snap.Hutao.Elevated.Launcher.Runtime.nuspec -Encoding utf8
+      - name: Push
+        run: |
+          git config --global user.email "qhy040404@163.com"
+          git add .
+          git commit -m "Release ${{ github.ref_name }}"
+          git push
