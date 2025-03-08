@@ -79,10 +79,10 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
 }
 
 #[tauri::command]
-pub async fn get_changelog() -> Result<String, String> {
-    let url = "https://api.qhy04.com/hutaocdn/changelog";
+pub async fn get_changelog(lang: String, from: String) -> Result<String, String> {
+    let url = format!("https://api.qhy04.com/hutaocdn/changelog?lang={}&from={}", lang, from);
     let res = REQUEST_CLIENT
-        .get(url)
+        .get(&url)
         .send()
         .await;
     if res.is_err() {

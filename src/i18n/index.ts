@@ -22,6 +22,26 @@ const getLocale = () => {
   return locale;
 };
 
+export const getLang = () => {
+  let locale = navigator.language || 'en';
+  if (locale.includes('-')) {
+    locale = locale.split('-')[0];
+  }
+
+  switch (locale) {
+    case 'zh':
+      return 'zh';
+    case 'id':
+      return 'id';
+    case 'ru':
+      return 'ru';
+    case 'ja':
+      return 'jp';
+    default:
+      return 'en';
+  }
+}
+
 const i18n = createI18n({
   legacy: false,
   locale: getLocale(),

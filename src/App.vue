@@ -286,6 +286,10 @@
   overflow-y: auto;
   margin-left: -24px;
   height: 140px;
+
+  ::v-deep(h3) {
+    margin-left: 20px;
+  }
 }
 
 .changelog::-webkit-scrollbar {
@@ -469,6 +473,7 @@ import {
   LoadToken,
   LoginHomaPassport,
 } from './api';
+import { getLang } from './i18n';
 
 const { t } = useI18n();
 const init = ref(false);
@@ -721,7 +726,7 @@ onMounted(async () => {
     }
 
     version_info.value = `${local.toString()} -> ${remote.toString()}`;
-    changelog.value = await invoke<string>('get_changelog');
+    changelog.value = await invoke<string>('get_changelog', {'lang': getLang(), 'from': local.toString()});
   }
 
   testMirrorSpeed().catch((e) => alert(e));
