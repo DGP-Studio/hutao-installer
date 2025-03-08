@@ -47,6 +47,7 @@ jobs:
           path: Snap.Hutao.Deployment.exe
   sync:
     runs-on: windows-latest
+    needs: build
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
