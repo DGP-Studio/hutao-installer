@@ -148,19 +148,22 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             api::homa_fetch_cdn,
             api::homa_fetch_userinfo,
             installer::error_dialog,
+            installer::confirm_dialog,
             installer::message_dialog,
             installer::get_config,
             installer::get_changelog,
             installer::open_tos,
             installer::speedtest_5mb,
+            installer::check_temp_package_valid,
             installer::head_package,
             installer::download_package,
             installer::check_vcrt,
             installer::install_vcrt,
             installer::check_globalsign_r45,
+            installer::is_hutao_running,
+            installer::kill_process,
             installer::install_package,
             installer::create_desktop_lnk,
-            installer::clear_temp_dir,
             installer::launch_and_exit
         ])
         .manage(args)

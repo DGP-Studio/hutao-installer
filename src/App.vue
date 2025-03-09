@@ -37,9 +37,9 @@
         <div class="login" v-if="step === 2">
           <div class="desc">
             {{
-              t(
-                '如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验',
-              )
+            t(
+            '如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验',
+            )
             }}
           </div>
           <input type="email" class="account-input" v-model="homaUsername" :placeholder="t('用户名')" />
@@ -71,9 +71,9 @@
                   <span>{{ item.mirror_name }}</span>
                   <span>
                     {{
-                      item.speed == -1
-                        ? 'timeout'
-                        : `${item.speed?.toFixed(2)} MB/s`
+                    item.speed == -1
+                    ? 'timeout'
+                    : `${item.speed?.toFixed(2)} MB/s`
                     }}
                   </span>
                 </div>
@@ -114,9 +114,14 @@
             <CircleSuccess />
             <span>{{ t('您已安装最新版本') }}</span>
           </div>
-          <button class="btn btn-install" @click="launch">
-            {{ t('启动') }}
-          </button>
+          <div class="btn-container">
+            <button class="btn btn-login" @click="restart">
+              {{ t('重新安装') }}
+            </button>
+            <button class="btn btn-login" @click="launch">
+              {{ t('启动') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -575,59 +580,62 @@ async function loginSkip(): Promise<void> {
 async function install(): Promise<void> {
   step.value = 4;
   current.value = t('准备下载……');
-  let mirror_url;
-  try {
-    if (isCdnAvailable.value) mirror_url = await GetCdnUrl();
-    else mirror_url = selectedMirror.value!.url;
-  } catch (e) {
-    alert(e);
-  }
-  if (!mirror_url) {
-    step.value = 3;
-    return;
-  }
-  console.log(mirror_url);
-  let total_downloaded_size = 0;
-  const total_size = await invoke<number>('head_package', {
-    mirrorUrl: mirror_url,
-  });
-  let stat: InstallStat = {
-    speedLastSize: 0,
-    lastTime: performance.now(),
-    speed: 0,
-  };
-  progressInterval.value = setInterval(() => {
-    const now = performance.now();
-    const time_diff = now - stat.lastTime;
-    if (time_diff > 100) {
-      stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
-      stat.speedLastSize = total_downloaded_size;
-      stat.lastTime = now;
+  const package_exists_and_valid = await invoke<boolean>('check_temp_package_valid', { 'sha256': sha256.value });
+  if (!package_exists_and_valid) {
+    let mirror_url;
+    try {
+      if (isCdnAvailable.value) mirror_url = await GetCdnUrl();
+      else mirror_url = selectedMirror.value!.url;
+    } catch (e) {
+      alert(e);
     }
-    const speed = formatSize(stat.speed * 1000);
-    const downloaded = formatSize(total_downloaded_size);
-    const total = formatSize(total_size);
-    current.value = `
+    if (!mirror_url) {
+      step.value = 3;
+      return;
+    }
+    console.log(mirror_url);
+    let total_downloaded_size = 0;
+    const total_size = await invoke<number>('head_package', {
+      mirrorUrl: mirror_url,
+    });
+    let stat: InstallStat = {
+      speedLastSize: 0,
+      lastTime: performance.now(),
+      speed: 0,
+    };
+    progressInterval.value = setInterval(() => {
+      const now = performance.now();
+      const time_diff = now - stat.lastTime;
+      if (time_diff > 100) {
+        stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
+        stat.speedLastSize = total_downloaded_size;
+        stat.lastTime = now;
+      }
+      const speed = formatSize(stat.speed * 1000);
+      const downloaded = formatSize(total_downloaded_size);
+      const total = formatSize(total_size);
+      current.value = `
       <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
     `;
-    percent.value = (total_downloaded_size / total_size) * 40;
-  }, 30);
+      percent.value = (total_downloaded_size / total_size) * 40;
+    }, 30);
 
-  let id = uuid();
-  let unlisten = await listen<[number, number]>(id, ({ payload }) => {
-    total_downloaded_size = payload[0];
-  });
-  await invoke('download_package', { mirrorUrl: mirror_url, id: id });
-  unlisten();
-  clearInterval(progressInterval.value);
+    let id = uuid();
+    let unlisten = await listen<[number, number]>(id, ({ payload }) => {
+      total_downloaded_size = payload[0];
+    });
+    await invoke('download_package', { mirrorUrl: mirror_url, id: id });
+    unlisten();
+    clearInterval(progressInterval.value);
+  }
   percent.value = 40;
   subStep.value = 1;
   current.value = t('正在检查 MSVC 运行库……');
   let is_vcrt_installed = await invoke<boolean>('check_vcrt');
   if (!is_vcrt_installed) {
     current.value = t('正在安装 MSVC 运行库……');
-    id = uuid();
-    unlisten = await listen<[number, number]>(id, ({ payload }) => {
+    let id = uuid();
+    let unlisten = await listen<[number, number]>(id, ({ payload }) => {
       const currentSize = formatSize(payload[0]);
       const targetSize = payload[1] ? formatSize(payload[1]) : '';
       if (payload[0] >= payload[1] - 1) {
@@ -652,8 +660,20 @@ async function install(): Promise<void> {
   percent.value = 60;
   subStep.value = 2;
   current.value = t('正在部署包……');
-  id = uuid();
-  unlisten = await listen<number>(id, ({ payload }) => {
+  const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
+  // TODO: i18n
+  if (hutao_running_state[0]) {
+    if (await invoke<boolean>('confirm_dialog', { 'title': '提示', 'message': '检测到 Snap Hutao 正在运行，是否结束进程继续部署？' })) {
+      await invoke('kill_process', { 'pid': hutao_running_state[1] });
+    } else {
+      await invoke('message_dialog', { 'title': '提示', 'message': '请手动结束进程后再尝试部署' });
+      step.value = 1;
+      return;
+    }
+  }
+
+  let id = uuid();
+  let unlisten = await listen<number>(id, ({ payload }) => {
     current.value = `
       <span class="d-single-stat">${t('部署进度')}: ${payload} %</span>
     `;
@@ -676,11 +696,21 @@ async function install(): Promise<void> {
       alert(e);
     }
   }
-  await invoke('clear_temp_dir');
 
   current.value = t('安装完成');
   step.value = 5;
   percent.value = 100;
+}
+
+async function restart(): Promise<void> {
+  let config = {
+    is_update: false,
+    curr_version: null,
+    token: CONFIG.token,
+  }
+  Object.assign(CONFIG, config);
+  testMirrorSpeed().catch((e) => alert(e));
+  step.value = 1;
 }
 
 async function launch(): Promise<void> {

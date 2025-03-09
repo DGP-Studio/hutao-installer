@@ -13,6 +13,7 @@ use crate::{
 use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, State, WebviewWindow};
+use windows::Win32::{Foundation::CloseHandle, System::Diagnostics::ToolHelp::PROCESSENTRY32W};
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 use winsafe::{
     co::{CLSCTX, CLSID, SW},
@@ -35,6 +36,19 @@ pub async fn error_dialog(title: String, message: String, window: WebviewWindow)
         .set_level(rfd::MessageLevel::Error)
         .set_parent(&window)
         .show();
+}
+
+#[tauri::command]
+pub async fn confirm_dialog(title: String, message: String, window: WebviewWindow) -> bool {
+    let ret = rfd::MessageDialog::new()
+        .set_title(&title)
+        .set_description(&message)
+        .set_level(rfd::MessageLevel::Info)
+        .set_parent(&window)
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .show();
+
+    matches!(ret, rfd::MessageDialogResult::Yes)
 }
 
 #[tauri::command]
@@ -80,11 +94,11 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
 
 #[tauri::command]
 pub async fn get_changelog(lang: String, from: String) -> Result<String, String> {
-    let url = format!("https://api.qhy04.com/hutaocdn/changelog?lang={}&from={}", lang, from);
-    let res = REQUEST_CLIENT
-        .get(&url)
-        .send()
-        .await;
+    let url = format!(
+        "https://api.qhy04.com/hutaocdn/changelog?lang={}&from={}",
+        lang, from
+    );
+    let res = REQUEST_CLIENT.get(&url).send().await;
     if res.is_err() {
         return Err(format!("Failed to send http request: {:?}", res.err()));
     }
@@ -111,6 +125,24 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
         return Ok((-1.0) as f64);
     }
     Ok(5.0 / ((elapsed as f64) / (1000 as f64)))
+}
+
+#[tauri::command]
+pub async fn check_temp_package_valid(sha256: String) -> Result<bool, String> {
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let exists = tokio::fs::metadata(installer_path.clone()).await;
+    if exists.is_err() {
+        return Ok(false);
+    }
+
+    let hash = run_sha256_file_hash_async(installer_path.to_str().unwrap()).await;
+    if hash.is_err() {
+        return Err(format!("Failed to hash installer: {:?}", hash.err()));
+    }
+
+    let hash = hash.unwrap();
+    Ok(hash == sha256)
 }
 
 #[tauri::command]
@@ -262,6 +294,78 @@ pub async fn check_globalsign_r45(window: WebviewWindow) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn is_hutao_running() -> Result<(bool, Option<u32>), String> {
+    let target_proc_name = "Snap.Hutao.exe".to_string();
+    let mut found = false;
+    let mut pid: Option<u32> = None;
+    unsafe {
+        let snapshot = windows::Win32::System::Diagnostics::ToolHelp::CreateToolhelp32Snapshot(
+            windows::Win32::System::Diagnostics::ToolHelp::TH32CS_SNAPPROCESS,
+            0,
+        );
+        if let Err(e) = snapshot {
+            return Err(format!("Failed to create snapshot: {:?}", e));
+        }
+        let snapshot = snapshot.unwrap();
+        if snapshot.is_invalid() {
+            return Err("Failed to create snapshot: invalid handle".to_string());
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+
+        if windows::Win32::System::Diagnostics::ToolHelp::Process32FirstW(snapshot, &mut entry)
+            .is_ok()
+        {
+            loop {
+                let current_name = String::from_utf16_lossy(&entry.szExeFile)
+                    .trim_end_matches('\0')
+                    .to_lowercase();
+                if current_name == target_proc_name.to_lowercase() {
+                    if let Some(path) = get_process_path(entry.th32ProcessID) {
+                        if path.contains("60568DGPStudio.SnapHutao") {
+                            found = true;
+                            pid = Some(entry.th32ProcessID);
+                            break;
+                        }
+                    }
+                }
+
+                if windows::Win32::System::Diagnostics::ToolHelp::Process32NextW(
+                    snapshot, &mut entry,
+                )
+                .is_err()
+                {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snapshot);
+    }
+    Ok((found, pid))
+}
+
+#[tauri::command]
+pub async fn kill_process(pid: u32) -> Result<(), String> {
+    // use the windows crate
+    let handle = unsafe {
+        windows::Win32::System::Threading::OpenProcess(
+            windows::Win32::System::Threading::PROCESS_TERMINATE,
+            false,
+            pid,
+        )
+    };
+    if let Err(e) = handle {
+        return Err(format!("Failed to open process: {:?}", e));
+    }
+    let handle = handle.unwrap();
+    let ret = unsafe { windows::Win32::System::Threading::TerminateProcess(handle, 1) };
+    if let Err(e) = ret {
+        return Err(format!("Failed to terminate process: {:?}", e));
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn install_package(
     sha256: String,
     id: String,
@@ -292,6 +396,8 @@ pub async fn install_package(
             install_res.err()
         ));
     }
+
+    let _ = tokio::fs::remove_file(installer_path).await;
     Ok(())
 }
 
@@ -329,15 +435,39 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn clear_temp_dir() -> Result<(), String> {
-    let temp_dir = std::env::temp_dir();
-    let _ = tokio::fs::remove_dir_all(temp_dir).await;
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
     let _ = run_elevated(target, "".to_string()).map_err(|e| format!("Failed to launch: {:?}", e));
     app.exit(0);
+}
+
+fn get_process_path(pid: u32) -> Option<String> {
+    // QueryFullProcessImageName
+    let handle = unsafe {
+        windows::Win32::System::Threading::OpenProcess(
+            windows::Win32::System::Threading::PROCESS_QUERY_LIMITED_INFORMATION,
+            false,
+            pid,
+        )
+    };
+    if handle.is_err() {
+        return None;
+    }
+    let handle = handle.unwrap();
+    let mut buffer = [0u16; 1024];
+    let mut size = buffer.len() as u32;
+    let ret = unsafe {
+        windows::Win32::System::Threading::QueryFullProcessImageNameW(
+            handle,
+            windows::Win32::System::Threading::PROCESS_NAME_FORMAT(0),
+            windows::core::PWSTR(buffer.as_mut_ptr()),
+            &mut size,
+        )
+    };
+    let _ = unsafe { CloseHandle(handle) };
+    if ret.is_err() {
+        return None;
+    }
+    let path = String::from_utf16_lossy(&buffer[..size as usize]);
+    Some(path)
 }
