@@ -1,15 +1,8 @@
-use windows::
-    Win32::{
-        Foundation::HANDLE,
-        UI::Shell::{
-            FOLDERID_Desktop, SHGetKnownFolderPath, KF_FLAG_DEFAULT,
-        },
-    }
-;
+use windows::Win32::UI::Shell::{FOLDERID_Desktop, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
 
 pub fn get_desktop() -> Result<String, String> {
     let pwstr = unsafe {
-        SHGetKnownFolderPath(&FOLDERID_Desktop, KF_FLAG_DEFAULT, HANDLE::default())
+        SHGetKnownFolderPath(&FOLDERID_Desktop, KF_FLAG_DEFAULT, None)
             .map(|pwstr| {
                 pwstr
                     .to_string()

@@ -617,7 +617,7 @@ async function install(): Promise<void> {
       current.value = `
       <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
     `;
-      percent.value = (total_downloaded_size / total_size) * 40;
+      percent.value = (total_downloaded_size / total_size) * 45;
     }, 30);
 
     let id = uuid();
@@ -628,7 +628,7 @@ async function install(): Promise<void> {
     unlisten();
     clearInterval(progressInterval.value);
   }
-  percent.value = 40;
+  percent.value = 45;
   subStep.value = 1;
   current.value = t('正在检查 MSVC 运行库……');
   let is_vcrt_installed = await invoke<boolean>('check_vcrt');
@@ -657,7 +657,7 @@ async function install(): Promise<void> {
     alert(e);
     // todo: 后续处理
   }
-  percent.value = 60;
+  percent.value = 55;
   subStep.value = 2;
   current.value = t('正在部署包……');
   const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
@@ -677,7 +677,7 @@ async function install(): Promise<void> {
     current.value = `
       <span class="d-single-stat">${t('部署进度')}: ${payload} %</span>
     `;
-    percent.value = 60 + payload * 0.39;
+    percent.value = 55 + payload * 0.44;
   });
   try {
     await invoke('install_package', { sha256: sha256.value, id: id });

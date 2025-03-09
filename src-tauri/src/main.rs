@@ -5,7 +5,6 @@ pub mod api;
 pub mod cli;
 pub mod fs;
 pub mod installer;
-pub mod local;
 pub mod module;
 pub mod utils;
 

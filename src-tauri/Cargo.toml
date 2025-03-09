@@ -14,7 +14,7 @@ tauri-utils = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 cppwinrt = "0.2.1"
-windows = { version = "0.58", features = [
+windows = { version = "0.60", features = [
     "Win32_System_Console",
     "Win32_System_LibraryLoader",
     "Win32_UI",
@@ -32,6 +32,7 @@ windows = { version = "0.58", features = [
     "Win32_System_Diagnostics",
     "Win32_System_Diagnostics_ToolHelp"
 ] }
+windows-future = "0.1"
 tokio-util = { version = "0.7", features = ["io-util"] }
 tokio = { version = "1", features = [
     "rt",
@@ -43,7 +44,7 @@ tokio = { version = "1", features = [
     "macros",
     "net",
 ] }
-clap = { version = "4.5.24", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 nt_version = "0.1"
 lazy_static = "1.5"
 num_cpus = "1.16.0"
@@ -60,18 +61,13 @@ rfd = { version = "0.15", default-features = false, features = [
     "tokio",
     "common-controls-v6",
 ] }
-fmmap = { version = "0.3", features = ["tokio-async"] }
-indicatif = { version = "0.17.9", features = ["tokio"] }
 dark-light = "2.0.0"
-pin-project = "1.1.7"
 chksum-sha2-256 = { version = "0.1", features = ["async-runtime-tokio"] }
-webbrowser = "0.8"
+webbrowser = "1"
 winreg = "0.55.0"
-futures = "0.3.31"
-async-compression = { version = "0.4", features = ["tokio"] }
-async-walkdir = "2.0"
-uuid = { version = "1.12.0", features = ["v4"] }
-whoami = "1.5.2"
+futures = "0.3"
+uuid = { version = "1.15", features = ["v4"] }
+whoami = "1"
 chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
 winsafe = { version = "0.0.23", features = ["shell"] }
 

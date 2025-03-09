@@ -51,7 +51,7 @@ pub async fn find_certificate(subject: &str) -> Result<bool, String> {
             let _ = CertFreeCertificateContext(Some(cert));
         }
 
-        let _ = CertCloseStore(h_store, 0);
+        let _ = CertCloseStore(Some(h_store), 0);
         Ok(found)
     }
 }
@@ -104,7 +104,7 @@ https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root
             .show();
 
         let add_res =
-            CertAddCertificateContextToStore(h_store, cert, CERT_STORE_ADD_REPLACE_EXISTING, None);
+            CertAddCertificateContextToStore(Some(h_store), cert, CERT_STORE_ADD_REPLACE_EXISTING, None);
 
         let _ = CertFreeCertificateContext(Some(cert));
 
@@ -115,7 +115,7 @@ https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root
             ));
         }
 
-        let _ = CertCloseStore(h_store, 0);
+        let _ = CertCloseStore(Some(h_store), 0);
         Ok(true)
     }
 }

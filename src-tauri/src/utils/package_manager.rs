@@ -1,6 +1,6 @@
 use windows::{
     core::{Error, Result, HSTRING},
-    Foundation::{AsyncOperationProgressHandler, Uri},
+    Foundation::Uri,
     Management::Deployment::{
         AddPackageOptions, DeploymentProgress, DeploymentResult, PackageManager,
     },
@@ -35,21 +35,24 @@ pub async fn add_package(
     let options = AddPackageOptions::new()?;
     let _ = options.SetForceAppShutdown(true);
     let _ = options.SetRetainFilesOnFailure(true);
-    let op: windows::Foundation::IAsyncOperationWithProgress<
+    let op: windows_future::IAsyncOperationWithProgress<
         windows::Management::Deployment::DeploymentResult,
         windows::Management::Deployment::DeploymentProgress,
     > = package_manager.AddPackageByUriAsync(&package_uri, &options)?;
-    let progress_sink: AsyncOperationProgressHandler<DeploymentResult, DeploymentProgress> =
-        AsyncOperationProgressHandler::new(move |_, progress: &DeploymentProgress| {
-            dbg!(progress.percentage);
+    let progress_sink: windows_future::AsyncOperationProgressHandler<
+        DeploymentResult,
+        DeploymentProgress,
+    > = windows_future::AsyncOperationProgressHandler::new(
+        move |_, progress: windows::core::Ref<DeploymentProgress>| {
             let _ = handler(serde_json::json!(progress.percentage));
             Ok(())
-        });
+        },
+    );
     let _ = op.SetProgress(&progress_sink);
     let res = op.get()?;
 
     if res.IsRegistered()? {
-       Ok(true)
+        Ok(true)
     } else {
         Err(Error::from_hresult(res.ExtendedErrorCode()?))
     }
