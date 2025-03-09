@@ -689,7 +689,7 @@ async function install(): Promise<void> {
   percent.value = 99;
   current.value = t('很快就好……');
 
-  if (createLnk.value) {
+  if (createLnk.value && !CONFIG.is_update) {
     try {
       await invoke('create_desktop_lnk');
     } catch (e) {
