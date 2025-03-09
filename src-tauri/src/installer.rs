@@ -63,7 +63,7 @@ pub async fn message_dialog(title: String, message: String, window: WebviewWindo
 
 #[tauri::command]
 pub async fn open_tos() -> Result<(), String> {
-    let url = "https://hut.ao/zh/statements/tos.html";
+    let url = "https://hut.ao/statements/tos.html";
     if webbrowser::open(url).is_ok() {
         Ok(())
     } else {
