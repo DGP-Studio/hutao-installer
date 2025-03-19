@@ -1,6 +1,6 @@
 [package]
 name = "hutao-installer"
-version = "0.1.0"
+version = "2.1.0"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
@@ -70,6 +70,8 @@ uuid = { version = "1.15", features = ["v4"] }
 whoami = "1"
 chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
 winsafe = { version = "0.0.23", features = ["shell"] }
+semver = "1"
+tauri-plugin-single-instance = "2"
 
 [[bin]]
 name = "hutao-installer"

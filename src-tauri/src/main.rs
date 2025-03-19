@@ -121,6 +121,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("不支持的操作系统版本")
+            .set_level(rfd::MessageLevel::Error)
             .show();
         return;
     }
@@ -135,10 +136,18 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("无法访问临时文件夹")
+            .set_level(rfd::MessageLevel::Error)
             .show();
         return;
     }
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_, _, _| {
+            rfd::MessageDialog::new()
+                .set_title("错误")
+                .set_description("另一个安装器正在运行")
+                .set_level(rfd::MessageLevel::Error)
+                .show();
+        }))
         .invoke_handler(tauri::generate_handler![
             // things which can be run directly
             api::generic_is_oversea,
@@ -149,6 +158,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::error_dialog,
             installer::confirm_dialog,
             installer::message_dialog,
+            installer::self_update,
             installer::get_config,
             installer::get_changelog,
             installer::open_tos,

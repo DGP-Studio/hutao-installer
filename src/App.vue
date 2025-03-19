@@ -523,6 +523,7 @@ const changelog = ref<string>('');
 
 const CONFIG: Config = reactive({
   is_update: false,
+  is_auto_update: false,
   curr_version: null,
   token: null,
 });
@@ -749,6 +750,10 @@ onMounted(async () => {
   mirrors.value = patch_data.mirrors;
   sha256.value = patch_data.sha256;
   isOversea.value = await fetchIsOversea();
+
+  if (!config.is_auto_update) {
+    await invoke('self_update');
+  }
 
   if (config.is_update && config.curr_version) {
     let local = Version.parse(config.curr_version);

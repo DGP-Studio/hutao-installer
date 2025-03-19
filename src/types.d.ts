@@ -33,6 +33,7 @@ type GenericPatchPackageMirror = {
 
 interface Config {
   is_update: boolean;
+  is_auto_update: boolean;
   curr_version: string | null;
   token: string | null;
 }

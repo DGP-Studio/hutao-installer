@@ -12,7 +12,7 @@ use crate::{
 };
 use serde::Serialize;
 use std::{path::Path, time::Instant};
-use tauri::{AppHandle, Emitter, State, WebviewWindow};
+use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use windows::Win32::{Foundation::CloseHandle, System::Diagnostics::ToolHelp::PROCESSENTRY32W};
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 use winsafe::{
@@ -24,6 +24,7 @@ use winsafe::{
 #[derive(Serialize, Debug, Clone)]
 pub struct Config {
     pub is_update: bool,
+    pub is_auto_update: bool,
     pub curr_version: Option<String>,
     pub token: Option<String>,
 }
@@ -62,6 +63,68 @@ pub async fn message_dialog(title: String, message: String, window: WebviewWindo
 }
 
 #[tauri::command]
+pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+    let exe_path = std::env::current_exe().unwrap();
+    let outdated = exe_path.with_extension("old");
+    let _ = tokio::fs::remove_file(&outdated).await;
+
+    let curr_ver = app.package_info().version.clone();
+    dbg!(&curr_ver);
+    let url = "https://api.snapgenshin.com/patch/hutao-deployment";
+    let resp = REQUEST_CLIENT.get(url).send().await;
+    if resp.is_err() {
+        return Err(format!("Failed to check self update: {:?}", resp.err()));
+    }
+    let resp = resp.unwrap();
+    let json: Result<crate::api::GenericPatchResp, reqwest::Error> = resp.json().await;
+    if json.is_err() {
+        return Err(format!(
+            "Failed to parse self update response: {:?}",
+            json.err()
+        ));
+    }
+    let json = json.unwrap();
+    if json.retcode != 0 {
+        return Err(format!("Failed to check self update: {:?}", json.message));
+    }
+    let data = json.data.unwrap();
+    let latest_ver = data.version.trim_end_matches(".0").to_string();
+    let latest_ver = semver::Version::parse(&latest_ver);
+    if latest_ver.is_err() {
+        return Err(format!(
+            "Failed to parse latest version: {:?}",
+            latest_ver.err()
+        ));
+    }
+    let latest_ver = latest_ver.unwrap();
+    dbg!(&latest_ver);
+
+    dbg!(latest_ver > curr_ver);
+    dbg!(latest_ver < curr_ver);
+
+    if curr_ver < latest_ver {
+        let res = tokio::fs::rename(&exe_path, &outdated).await;
+        if res.is_err() {
+            return Err(format!("Failed to rename executable: {:?}", res.err()));
+        }
+
+        let res = REQUEST_CLIENT
+            .get("https://api.qhy04.com/hutaocdn/deployment")
+            .send()
+            .await
+            .expect("failed to download new installer");
+        let new_installer_blob = res.bytes().await.expect("failed to download new installer");
+        tokio::fs::write(&exe_path, new_installer_blob)
+            .await
+            .expect("failed to write new installer");
+        let _ = run_elevated(&exe_path, "");
+        app.exit(0);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn open_tos() -> Result<(), String> {
     let url = "https://hut.ao/statements/tos.html";
     if webbrowser::open(url).is_ok() {
@@ -80,6 +143,7 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
         let update_args = update_args.unwrap();
         return Ok(Config {
             is_update: true,
+            is_auto_update: true,
             curr_version: exists,
             token: update_args.token,
         });
@@ -87,6 +151,7 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
 
     Ok(Config {
         is_update: exists.is_some(),
+        is_auto_update: false,
         curr_version: exists,
         token: None,
     })
