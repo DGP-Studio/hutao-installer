@@ -4,6 +4,7 @@
       <span class="fui-Spinner__spinner">
         <span class="fui-Spinner__spinnerTail"></span>
       </span>
+      <div class="init-self-updating" v-show="selfUpdating">正在更新安装器</div>
     </div>
     <div v-show="init" class="content">
       <div class="image">
@@ -136,6 +137,7 @@
 .init-loading {
   height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   padding-bottom: 24px;
@@ -146,6 +148,11 @@
   width: 40px;
   height: 40px;
   --fui-Spinner--strokeWidth: 4px;
+}
+
+.init-self-updating {
+  margin-top: 16px;
+  font-size: 14px;
 }
 
 .content {
@@ -486,6 +493,7 @@ import { getLang } from './i18n';
 
 const { t } = useI18n();
 const init = ref(false);
+const selfUpdating = ref(false);
 
 const subStepList: ReadonlyArray<string> = [
   '下载安装包',
@@ -752,7 +760,10 @@ onMounted(async () => {
   isOversea.value = await fetchIsOversea();
 
   if (!config.is_auto_update) {
-    await invoke('self_update');
+    if (await invoke<boolean>('need_self_update')) {
+      selfUpdating.value = true;
+      await invoke('self_update');
+    }
   }
 
   if (config.is_update && config.curr_version) {

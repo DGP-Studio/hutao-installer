@@ -63,7 +63,7 @@ pub async fn message_dialog(title: String, message: String, window: WebviewWindo
 }
 
 #[tauri::command]
-pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+pub async fn need_self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<bool, String> {
     let exe_path = std::env::current_exe().unwrap();
     let outdated = exe_path.with_extension("old");
     let _ = tokio::fs::remove_file(&outdated).await;
@@ -97,25 +97,31 @@ pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), Str
         ));
     }
     let latest_ver = latest_ver.unwrap();
+    Ok(curr_ver < latest_ver)
+}
 
-    if curr_ver < latest_ver {
-        let res = tokio::fs::rename(&exe_path, &outdated).await;
-        if res.is_err() {
-            return Err(format!("Failed to rename executable: {:?}", res.err()));
-        }
+#[tauri::command]
+pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+    let exe_path = std::env::current_exe().unwrap();
+    let outdated = exe_path.with_extension("old");
+    let _ = tokio::fs::remove_file(&outdated).await;
 
-        let res = REQUEST_CLIENT
-            .get("https://api.qhy04.com/hutaocdn/deployment")
-            .send()
-            .await
-            .expect("failed to download new installer");
-        let new_installer_blob = res.bytes().await.expect("failed to download new installer");
-        tokio::fs::write(&exe_path, new_installer_blob)
-            .await
-            .expect("failed to write new installer");
-        let _ = run_elevated(&exe_path, "");
-        app.exit(0);
+    let res = tokio::fs::rename(&exe_path, &outdated).await;
+    if res.is_err() {
+        return Err(format!("Failed to rename executable: {:?}", res.err()));
     }
+
+    let res = REQUEST_CLIENT
+        .get("https://api.qhy04.com/hutaocdn/deployment")
+        .send()
+        .await
+        .expect("failed to download new installer");
+    let new_installer_blob = res.bytes().await.expect("failed to download new installer");
+    tokio::fs::write(&exe_path, new_installer_blob)
+        .await
+        .expect("failed to write new installer");
+    let _ = run_elevated(&exe_path, "");
+    app.exit(0);
 
     Ok(())
 }

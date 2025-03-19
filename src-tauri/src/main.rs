@@ -158,6 +158,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::error_dialog,
             installer::confirm_dialog,
             installer::message_dialog,
+            installer::need_self_update,
             installer::self_update,
             installer::get_config,
             installer::get_changelog,

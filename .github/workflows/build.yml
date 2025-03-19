@@ -70,3 +70,14 @@ jobs:
           git add .
           git commit -m "Release ${{ github.ref_name }}"
           git push
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          target_commitish: main
+          name: ${{ github.ref_name }}
+          prerelease: false
+          repository: DGP-Studio/Snap.Hutao.Deployment
+          token: ${{ secrets.TOKEN }}
+          files: |
+            src/Snap.Hutao.Deployment.Runtime/Snap.Hutao.Deployment.exe
