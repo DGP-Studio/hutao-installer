@@ -69,7 +69,6 @@ pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), Str
     let _ = tokio::fs::remove_file(&outdated).await;
 
     let curr_ver = app.package_info().version.clone();
-    dbg!(&curr_ver);
     let url = "https://api.snapgenshin.com/patch/hutao-deployment";
     let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
@@ -88,7 +87,8 @@ pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), Str
         return Err(format!("Failed to check self update: {:?}", json.message));
     }
     let data = json.data.unwrap();
-    let latest_ver = data.version.trim_end_matches(".0").to_string();
+    // remove last 2 chars
+    let latest_ver = data.version[..data.version.len() - 2].to_string();
     let latest_ver = semver::Version::parse(&latest_ver);
     if latest_ver.is_err() {
         return Err(format!(
@@ -97,10 +97,6 @@ pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), Str
         ));
     }
     let latest_ver = latest_ver.unwrap();
-    dbg!(&latest_ver);
-
-    dbg!(latest_ver > curr_ver);
-    dbg!(latest_ver < curr_ver);
 
     if curr_ver < latest_ver {
         let res = tokio::fs::rename(&exe_path, &outdated).await;
@@ -231,7 +227,6 @@ pub async fn head_package(mirror_url: String) -> Result<u64, String> {
 
     let len = len.unwrap();
 
-    dbg!(len);
     let len = len.parse::<u64>();
     if len.is_err() {
         return Err(format!("Failed to parse content length: {:?}", len.err()));
