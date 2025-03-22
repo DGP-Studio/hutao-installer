@@ -13,8 +13,8 @@ tauri = { version = "2", features = [] }
 tauri-utils = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-cppwinrt = "0.2.1"
-windows = { version = "0.60", features = [
+cppwinrt = "0.2"
+windows = { version = "0.61", features = [
     "Win32_System_Console",
     "Win32_System_LibraryLoader",
     "Win32_UI",
@@ -32,7 +32,7 @@ windows = { version = "0.60", features = [
     "Win32_System_Diagnostics",
     "Win32_System_Diagnostics_ToolHelp"
 ] }
-windows-future = "0.1"
+windows-future = "0.2"
 tokio-util = { version = "0.7", features = ["io-util"] }
 tokio = { version = "1", features = [
     "rt",
@@ -66,7 +66,7 @@ chksum-sha2-256 = { version = "0.1", features = ["async-runtime-tokio"] }
 webbrowser = "1"
 winreg = "0.55.0"
 futures = "0.3"
-uuid = { version = "1.15", features = ["v4"] }
+uuid = { version = "1.16", features = ["v4"] }
 whoami = "1"
 chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
 winsafe = { version = "0.0.23", features = ["shell"] }
