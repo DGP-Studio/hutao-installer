@@ -4,7 +4,7 @@
       <span class="fui-Spinner__spinner">
         <span class="fui-Spinner__spinnerTail"></span>
       </span>
-      <div class="init-self-updating" v-show="selfUpdating">正在更新安装器</div>
+      <div class="init-self-updating" v-show="selfUpdating">{{ t('正在更新安装器……') }}</div>
     </div>
     <div v-show="init" class="content">
       <div class="image">
@@ -28,7 +28,7 @@
             </span>
           </div>
           <div v-if="CONFIG.is_update" class="update-info">
-            <span>更新信息: {{ version_info }}</span>
+            <span>{{ t('更新信息: ') }}{{ version_info }}</span>
             <vue-markdown :source="changelog" class="changelog" />
           </div>
           <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
@@ -37,11 +37,7 @@
         </div>
         <div class="login" v-if="step === 2">
           <div class="desc">
-            {{
-            t(
-            '如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验',
-            )
-            }}
+            {{ t('如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验') }}
           </div>
           <input type="email" class="account-input" v-model="homaUsername" :placeholder="t('用户名')" />
           <input type="password" class="account-input textarea-password" v-model="homaPassword"
@@ -72,9 +68,9 @@
                   <span>{{ item.mirror_name }}</span>
                   <span>
                     {{
-                    item.speed == -1
-                    ? 'timeout'
-                    : `${item.speed?.toFixed(2)} MB/s`
+                      item.speed == -1
+                        ? 'timeout'
+                        : `${item.speed?.toFixed(2)} MB/s`
                     }}
                   </span>
                 </div>
