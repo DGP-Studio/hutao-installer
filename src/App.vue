@@ -512,6 +512,11 @@ async function start(): Promise<void> {
     return;
   }
 
+  if (isCdnAvailable.value || await IsCdnAvailable()) {
+    await install();
+    return;
+  }
+
   if (CONFIG.token) {
     await LoadToken(CONFIG.token);
     if (await IsCdnAvailable()) {
@@ -636,13 +641,14 @@ async function install(): Promise<void> {
   // TODO: i18n
   if (hutao_running_state[0]) {
     if (await invoke<boolean>('confirm_dialog', {
-      'title': '提示',
-      'message': '检测到 Snap Hutao 正在运行，是否结束进程继续部署？',
+      'title': t('提示'),
+      'message': t('检测到 Snap Hutao 正在运行，是否结束进程继续部署？'),
     })) {
       await invoke('kill_process', { 'pid': hutao_running_state[1] });
     } else {
-      await invoke('message_dialog', { 'title': '提示', 'message': '请手动结束进程后再尝试部署' });
+      await invoke('message_dialog', { 'title': t('提示'), 'message': t('请手动结束进程后再尝试部署') });
       step.value = 1;
+      subStep.value = 0;
       return;
     }
   }

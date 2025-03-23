@@ -65,7 +65,7 @@ export async function LoadToken(token: string): Promise<void> {
 
 export async function IsCdnAvailable(): Promise<boolean> {
   if (!cachedToken) {
-    throw new Error('Not logged in');
+    return false;
   }
 
   const userinfo = await invoke<HomaPassportUserInfo>('homa_fetch_userinfo', {
