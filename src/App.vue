@@ -28,7 +28,7 @@
             </span>
           </div>
           <div v-if="CONFIG.is_update" class="update-info">
-            <span>{{ t('更新信息: ') }}{{ version_info }}</span>
+            <span>{{ t('更新信息: x', [version_info]) }}</span>
             <vue-markdown :source="changelog" class="changelog" />
           </div>
           <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
@@ -41,7 +41,7 @@
           </div>
           <input type="email" class="account-input" v-model="homaUsername" :placeholder="t('用户名')" />
           <input type="password" class="account-input textarea-password" v-model="homaPassword"
-            :placeholder="t('密码')" />
+                 :placeholder="t('密码')" />
           <div class="btn-container">
             <button class="btn btn-login" @click="loginSkip">
               {{ t('跳过') }}
@@ -62,7 +62,7 @@
             <div class="desc">{{ t('选择一个镜像源') }}</div>
             <div class="listview">
               <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
-                :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
+                   :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
                 <div class="left-indicator" />
                 <div class="mirror-item">
                   <span>{{ item.mirror_name }}</span>
@@ -84,7 +84,7 @@
         <div class="progress" v-if="step === 4">
           <div class="step-desc">
             <div v-for="(i, a) in subStepList" class="substep" :class="{ done: a < subStep }" v-show="a <= subStep"
-              :key="i">
+                 :key="i">
               <span v-if="a === subStep" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
@@ -183,11 +183,10 @@
   opacity: 0.8;
   margin-left: 10px;
   margin-top: 4px;
-  font-family:
-    Consolas,
-    'Courier New',
-    Microsoft Yahei,
-    serif;
+  font-family: Consolas,
+  'Courier New',
+  Microsoft Yahei,
+  serif;
   border: unset;
   outline: none;
 }
@@ -308,30 +307,6 @@
   background: transparent;
 }
 
-.more {
-  align-items: flex-start;
-  gap: 6px;
-  padding-top: 8px;
-  padding-left: 10px;
-  font-size: 13px;
-  display: flex;
-  flex-direction: column;
-
-  span {
-    opacity: 0.8;
-  }
-
-  a {
-    cursor: pointer;
-    font-family:
-      Consolas,
-      'Courier New',
-      Microsoft Yahei;
-    opacity: 0.8;
-    font-size: 12px;
-  }
-}
-
 .finish-text {
   text-align: center;
   opacity: 0.9;
@@ -405,10 +380,10 @@
   opacity: 0.7;
   padding-left: 14px;
   margin-top: -6px;
-  font-family:
-    Consolas,
-    'Courier New',
-    Microsoft Yahei;
+  font-family: Consolas,
+  'Courier New',
+  Microsoft Yahei,
+  serif;
 }
 
 .listview {
@@ -443,9 +418,8 @@
   background-color: #0f6cbd;
   margin-right: 8px;
   border-radius: 2px;
-  transition:
-    height 0.1s ease,
-    opacity 0.1s ease;
+  transition: height 0.1s ease,
+  opacity 0.1s ease;
 }
 
 .listview-item.selected .left-indicator {
@@ -477,14 +451,7 @@ import { getCurrentWindow, invoke, listen } from './tauri';
 import Checkbox from './components/Checkbox.vue';
 import CircleSuccess from './components/CircleSuccess.vue';
 import { v4 as uuid } from 'uuid';
-import {
-  fetchIsOversea,
-  fetchPatchData,
-  GetCdnUrl,
-  IsCdnAvailable,
-  LoadToken,
-  LoginHomaPassport,
-} from './api';
+import { fetchIsOversea, fetchPatchData, GetCdnUrl, IsCdnAvailable, LoadToken, LoginHomaPassport } from './api';
 import { getLang } from './i18n';
 
 const { t } = useI18n();
@@ -668,7 +635,10 @@ async function install(): Promise<void> {
   const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
   // TODO: i18n
   if (hutao_running_state[0]) {
-    if (await invoke<boolean>('confirm_dialog', { 'title': '提示', 'message': '检测到 Snap Hutao 正在运行，是否结束进程继续部署？' })) {
+    if (await invoke<boolean>('confirm_dialog', {
+      'title': '提示',
+      'message': '检测到 Snap Hutao 正在运行，是否结束进程继续部署？',
+    })) {
       await invoke('kill_process', { 'pid': hutao_running_state[1] });
     } else {
       await invoke('message_dialog', { 'title': '提示', 'message': '请手动结束进程后再尝试部署' });
@@ -712,7 +682,7 @@ async function restart(): Promise<void> {
     is_update: false,
     curr_version: null,
     token: CONFIG.token,
-  }
+  };
   Object.assign(CONFIG, config);
   testMirrorSpeed().catch((e) => alert(e));
   step.value = 1;
@@ -808,7 +778,7 @@ class Version {
   }
 
   toString() {
-    return `${this.major}.${this.minor}.${this.build}.${this.revision}`;
+    return `${this.major}.${this.minor}.${this.build}`;
   }
 
   static parse(version: string) {

@@ -92,10 +92,7 @@ pub struct GenericPatchResp {
 #[tauri::command]
 pub async fn generic_is_oversea() -> Result<bool, String> {
     let url = "https://api.snapgenshin.com/ip";
-    let resp = REQUEST_CLIENT
-        .get(url)
-        .send()
-        .await;
+    let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
         return Err(format!("Failed to send request: {:?}", resp.err()));
     }
@@ -116,10 +113,7 @@ pub async fn generic_is_oversea() -> Result<bool, String> {
 #[tauri::command]
 pub async fn generic_get_patch() -> Result<GenericPatchData, String> {
     let url = "https://api.snapgenshin.com/patch/hutao";
-    let resp = REQUEST_CLIENT
-        .get(url)
-        .send()
-        .await;
+    let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
         return Err(format!("Failed to send request: {:?}", resp.err()));
     }
@@ -138,11 +132,7 @@ pub async fn generic_get_patch() -> Result<GenericPatchData, String> {
 #[tauri::command]
 pub async fn homa_login(login_req: HomaPassportLoginReq) -> Result<HomaPassportLoginResp, String> {
     let url = "https://homa.snapgenshin.com/Passport/Login";
-    let resp = REQUEST_CLIENT
-        .post(url)
-        .json(&login_req)
-        .send()
-        .await;
+    let resp = REQUEST_CLIENT.post(url).json(&login_req).send().await;
     if resp.is_err() {
         return Err(format!("Failed to send request: {:?}", resp.err()));
     }
@@ -179,7 +169,10 @@ pub async fn homa_fetch_userinfo(token: String) -> Result<HomaPassportUserInfo, 
 
 #[tauri::command]
 pub async fn homa_fetch_cdn(token: String, filename: String) -> Result<String, String> {
-    let url = format!("https://homa.snapgenshin.com/Distribution/GetAcceleratedMirror?Filename={}", filename);
+    let url = format!(
+        "https://homa.snapgenshin.com/Distribution/GetAcceleratedMirror?Filename={}",
+        filename
+    );
     let resp = REQUEST_CLIENT
         .get(&url)
         .header("Authorization", &format!("Bearer {}", token))

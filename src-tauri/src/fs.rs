@@ -6,13 +6,7 @@ pub async fn create_http_stream(
     url: &str,
     offset: usize,
     size: usize,
-) -> Result<
-    (
-        Box<dyn tokio::io::AsyncRead + Unpin + std::marker::Send>,
-        u64,
-    ),
-    String,
-> {
+) -> Result<(Box<dyn AsyncRead + Unpin + Send>, u64), String> {
     let mut res = REQUEST_CLIENT.get(url);
     let has_range = offset > 0 || size > 0;
     if has_range {
@@ -48,8 +42,8 @@ pub async fn create_target_file(target: &str) -> Result<impl AsyncWrite, String>
 }
 
 pub async fn progressed_copy(
-    mut source: impl AsyncRead + std::marker::Unpin,
-    mut target: impl AsyncWrite + std::marker::Unpin,
+    mut source: impl AsyncRead + Unpin,
+    mut target: impl AsyncWrite + Unpin,
     on_progress: impl Fn(usize),
 ) -> Result<usize, String> {
     let mut downloaded = 0;

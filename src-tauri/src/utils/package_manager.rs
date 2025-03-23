@@ -27,7 +27,7 @@ pub async fn try_get_hutao_version() -> Result<Option<String>> {
 
 pub async fn add_package(
     package_path: String,
-    handler: impl Fn(serde_json::Value) + std::marker::Send + 'static,
+    handler: impl Fn(serde_json::Value) + Send + 'static,
 ) -> Result<bool> {
     let package_manager = PackageManager::new()?;
     let package_path = HSTRING::from(package_path);
@@ -36,8 +36,8 @@ pub async fn add_package(
     let _ = options.SetForceAppShutdown(true);
     let _ = options.SetRetainFilesOnFailure(true);
     let op: windows_future::IAsyncOperationWithProgress<
-        windows::Management::Deployment::DeploymentResult,
-        windows::Management::Deployment::DeploymentProgress,
+        DeploymentResult,
+        DeploymentProgress,
     > = package_manager.AddPackageByUriAsync(&package_uri, &options)?;
     let progress_sink: windows_future::AsyncOperationProgressHandler<
         DeploymentResult,

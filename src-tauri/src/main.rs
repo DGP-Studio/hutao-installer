@@ -10,7 +10,7 @@ pub mod utils;
 
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
-use reqwest::header;
+use reqwest::header::{HeaderMap, HeaderValue};
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
 use utils::{
@@ -50,8 +50,8 @@ fn ua_string() -> String {
     )
 }
 
-fn hutao_trace_headers() -> reqwest::header::HeaderMap {
-    let mut headers = header::HeaderMap::new();
+fn hutao_trace_headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
     let username = whoami::username();
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Microsoft\Cryptography"#;
@@ -66,7 +66,7 @@ fn hutao_trace_headers() -> reqwest::header::HeaderMap {
     let hutao_device_id = run_md5_hash(raw_device_id.as_str());
     headers.insert(
         "x-hutao-device-id",
-        header::HeaderValue::from_str(hutao_device_id.to_ascii_uppercase().as_str()).unwrap(),
+        HeaderValue::from_str(hutao_device_id.to_ascii_uppercase().as_str()).unwrap(),
     );
 
     headers

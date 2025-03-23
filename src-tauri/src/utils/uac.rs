@@ -49,7 +49,7 @@ pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(
     let par = HSTRING::from(args.as_ref());
 
     let mut sei = SHELLEXECUTEINFOW {
-        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+        cbSize: size_of::<SHELLEXECUTEINFOW>() as u32,
         fMask: SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS,
         lpVerb: w!("runas"),
         lpFile: PCWSTR(file.as_ptr()),

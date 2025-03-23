@@ -1,7 +1,5 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginVue } from '@rsbuild/plugin-vue';
-import CompressionPlugin from 'compression-webpack-plugin';
-import PurgeCSSPlugin from '@fullhuman/postcss-purgecss';
 import { pluginNodePolyfill } from '@rsbuild/plugin-node-polyfill';
 
 export default defineConfig({
@@ -23,20 +21,6 @@ export default defineConfig({
   },
   plugins: [pluginVue(), pluginNodePolyfill()],
   tools: {
-    bundlerChain: (chain) => {
-      // if (process.env.NODE_ENV !== 'development') {
-      //   chain.plugin('compress').use(CompressionPlugin, [
-      //     {
-      //       test: /\.(js|css|svg)$/,
-      //       filename: '[path][base].gz',
-      //       algorithm: 'gzip',
-      //       threshold: 1024,
-      //       minRatio: 0.8,
-      //       deleteOriginalAssets: true,
-      //     },
-      //   ]);
-      // }
-    },
     rspack: {
       experiments: {
         rspackFuture: {

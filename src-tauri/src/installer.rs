@@ -63,7 +63,7 @@ pub async fn message_dialog(title: String, message: String, window: WebviewWindo
 }
 
 #[tauri::command]
-pub async fn need_self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<bool, String> {
+pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
     let exe_path = std::env::current_exe().unwrap();
     let outdated = exe_path.with_extension("old");
     let _ = tokio::fs::remove_file(&outdated).await;
@@ -101,7 +101,7 @@ pub async fn need_self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<bo
 }
 
 #[tauri::command]
-pub async fn self_update<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let exe_path = std::env::current_exe().unwrap();
     let outdated = exe_path.with_extension("old");
     let _ = tokio::fs::remove_file(&outdated).await;
@@ -189,9 +189,9 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
         .await;
     let elapsed = start.elapsed().as_millis();
     if res.is_err() {
-        return Ok((-1.0) as f64);
+        return Ok(-1.0);
     }
-    Ok(5.0 / ((elapsed as f64) / (1000 as f64)))
+    Ok(5.0 / ((elapsed as f64) / (1000f64)))
 }
 
 #[tauri::command]
@@ -245,7 +245,7 @@ pub async fn head_package(mirror_url: String) -> Result<u64, String> {
 pub async fn download_package(
     mirror_url: String,
     id: String,
-    window: tauri::WebviewWindow,
+    window: WebviewWindow,
 ) -> Result<(), String> {
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
@@ -282,7 +282,7 @@ pub async fn check_vcrt() -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn install_vcrt(id: String, window: tauri::WebviewWindow) -> Result<(), String> {
+pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), String> {
     let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("vc_redist.x64.exe");
@@ -435,7 +435,7 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
 pub async fn install_package(
     sha256: String,
     id: String,
-    window: tauri::WebviewWindow,
+    window: WebviewWindow,
 ) -> Result<(), String> {
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");

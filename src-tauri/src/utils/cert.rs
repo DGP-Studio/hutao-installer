@@ -1,9 +1,6 @@
 use std::ffi::CString;
 use tokio_util::bytes::Bytes;
-use windows::{
-    core::s,
-    Win32::Security::Cryptography::*,
-};
+use windows::{core::s, Win32::Security::Cryptography::*};
 
 pub async fn find_certificate(subject: &str) -> Result<bool, String> {
     unsafe {
@@ -35,7 +32,7 @@ pub async fn find_certificate(subject: &str) -> Result<bool, String> {
                 X509_ASN_ENCODING,
                 &subj,
                 CERT_SIMPLE_NAME_STR,
-                Some(&mut buffer)
+                Some(&mut buffer),
             );
             buffer.resize(len as usize, 0);
             let sub_str = CString::from_vec_unchecked(buffer);
@@ -103,8 +100,12 @@ https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root
             .set_parent(&window)
             .show();
 
-        let add_res =
-            CertAddCertificateContextToStore(Some(h_store), cert, CERT_STORE_ADD_REPLACE_EXISTING, None);
+        let add_res = CertAddCertificateContextToStore(
+            Some(h_store),
+            cert,
+            CERT_STORE_ADD_REPLACE_EXISTING,
+            None,
+        );
 
         let _ = CertFreeCertificateContext(Some(cert));
 

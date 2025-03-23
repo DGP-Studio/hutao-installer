@@ -876,15 +876,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cppwinrt"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6793ce75d618d7a54346d72b90e9c8cf7f789105ee133d09f8e51bd2e9d182d"
-dependencies = [
- "windows-link",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1917,7 +1908,6 @@ dependencies = [
  "chksum-md5",
  "chksum-sha2-256",
  "clap",
- "cppwinrt",
  "dark-light",
  "futures",
  "lazy_static",
@@ -1934,7 +1924,6 @@ dependencies = [
  "tauri-utils",
  "tokio",
  "tokio-util",
- "uuid",
  "webbrowser",
  "whoami",
  "windows 0.61.1",

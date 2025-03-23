@@ -55,7 +55,7 @@ pub async fn install_webview2() {
         _l_param: LPARAM,
         lp_ref_data: isize,
     ) -> HRESULT {
-        let conf = lp_ref_data as *mut std::option::Option<windows::Win32::Foundation::HWND>;
+        let conf = lp_ref_data as *mut Option<HWND>;
         match msg {
             TDN_CREATED => {
                 (*conf).replace(hwnd);
@@ -87,7 +87,7 @@ pub async fn install_webview2() {
         };
 
         let config: TASKDIALOGCONFIG = TASKDIALOGCONFIG {
-            cbSize: u32::try_from(std::mem::size_of::<TASKDIALOGCONFIG>()).unwrap(),
+            cbSize: u32::try_from(size_of::<TASKDIALOGCONFIG>()).unwrap(),
             hInstance: unsafe { GetModuleHandleW(PCWSTR(std::ptr::null())).unwrap().into() },
             pszWindowTitle: PCWSTR(title_utf16_nul.as_ptr()),
             pszMainInstruction: PCWSTR(heading_utf16_nul.as_ptr()),
@@ -119,9 +119,7 @@ pub async fn install_webview2() {
         .await
         .expect("failed to download WebView2 installer");
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir
-        .as_path()
-        .join("MicrosoftEdgeWebview2Setup.exe");
+    let installer_path = temp_dir.as_path().join("MicrosoftEdgeWebview2Setup.exe");
     tokio::fs::write(&installer_path, wv2_installer_blob)
         .await
         .expect("failed to write installer to temp dir");

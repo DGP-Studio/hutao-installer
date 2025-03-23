@@ -40,7 +40,7 @@ export const getLang = () => {
     default:
       return 'en';
   }
-}
+};
 
 const i18n = createI18n({
   legacy: false,

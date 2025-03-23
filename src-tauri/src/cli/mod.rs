@@ -1,4 +1,5 @@
 pub mod arg;
+
 use arg::Command;
 use clap::Parser;
 
@@ -10,16 +11,14 @@ pub struct Cli {
 }
 impl Cli {
     pub fn command(&self) -> Command {
-        self.command
-            .clone()
-            .unwrap_or(Command::Install)
+        self.command.clone().unwrap_or(Command::Install)
     }
 
     pub fn command_as_str(&self) -> String {
         let command = self.command();
         match command {
             Command::Install => "install".to_string(),
-            Command::Update(args) =>  {
+            Command::Update(args) => {
                 if let Some(token) = args.token {
                     format!("update {}", token)
                 } else {
