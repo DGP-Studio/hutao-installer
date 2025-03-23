@@ -459,9 +459,9 @@ const init = ref(false);
 const selfUpdating = ref(false);
 
 const subStepList: ReadonlyArray<string> = [
-  '下载安装包',
-  '准备运行环境',
-  '部署文件',
+  t('下载安装包'),
+  t('准备运行环境'),
+  t('部署文件'),
 ];
 
 const acceptEula = ref<boolean>(true);
