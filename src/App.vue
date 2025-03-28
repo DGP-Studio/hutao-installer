@@ -561,16 +561,15 @@ async function install(): Promise<void> {
   if (!package_exists_and_valid) {
     let mirror_url;
     try {
-      if (isCdnAvailable.value) mirror_url = await GetCdnUrl();
-      else mirror_url = selectedMirror.value!.url;
+      mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
     } catch (e) {
-      alert(e);
-    }
-    if (!mirror_url) {
-      step.value = 3;
+      await invoke('error_dialog', {
+        title: t('错误'),
+        message: t('未获取到可用的镜像源，请重试'),
+      });
+      step.value = 1;
       return;
     }
-    console.log(mirror_url);
     let total_downloaded_size = 0;
     const total_size = await invoke<number>('head_package', {
       mirrorUrl: mirror_url,
@@ -601,8 +600,18 @@ async function install(): Promise<void> {
     let unlisten = await listen<[number, number]>(id, ({ payload }) => {
       total_downloaded_size = payload[0];
     });
-    await invoke('download_package', { mirrorUrl: mirror_url, id: id });
-    unlisten();
+    try {
+      await invoke('download_package', { mirrorUrl: mirror_url, id: id });
+    } catch (e) {
+      await invoke('error_dialog', {
+        title: t('错误'),
+        message: t('下载安装包失败，请重试') + '\n\n' + e,
+      });
+      step.value = 1;
+      return;
+    } finally {
+      unlisten();
+    }
     clearInterval(progressInterval.value);
   }
   percent.value = 45;
@@ -623,28 +632,51 @@ async function install(): Promise<void> {
         ]);
       }
     });
-    await invoke('install_vcrt', { id: id });
-    unlisten();
+    try {
+      await invoke('install_vcrt', { id: id });
+    } catch (e) {
+      await invoke('error_dialog', {
+        title: t('错误'),
+        message: t('安装 MSVC 运行库失败，请重试') + '\n\n' + e,
+      });
+      step.value = 1;
+      return;
+    } finally {
+      unlisten();
+    }
   }
   percent.value = 50;
   current.value = t('正在检查 GlobalSign Code Signing Root R45 证书……');
   try {
     await invoke('check_globalsign_r45');
   } catch (e) {
-    alert(e);
-    // todo: 后续处理
+    await invoke('error_dialog', {
+      title: t('错误'),
+      message: t('检查 GlobalSign Code Signing Root R45 证书失败，请重试') + '\n\n' + e,
+    });
+    step.value = 1;
+    return;
   }
   percent.value = 55;
   subStep.value = 2;
   current.value = t('正在部署包……');
   const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
-  // TODO: i18n
   if (hutao_running_state[0]) {
     if (await invoke<boolean>('confirm_dialog', {
       'title': t('提示'),
       'message': t('检测到 Snap Hutao 正在运行，是否结束进程继续部署？'),
     })) {
-      await invoke('kill_process', { 'pid': hutao_running_state[1] });
+      try {
+        await invoke('kill_process', { 'pid': hutao_running_state[1] });
+      } catch (e) {
+        await invoke('message_dialog', {
+          'title': t('提示'),
+          'message': t('结束进程失败，请手动结束进程后再尝试部署' + '\n\n' + e),
+        });
+        step.value = 1;
+        subStep.value = 0;
+        return;
+      }
     } else {
       await invoke('message_dialog', { 'title': t('提示'), 'message': t('请手动结束进程后再尝试部署') });
       step.value = 1;
@@ -663,9 +695,16 @@ async function install(): Promise<void> {
   try {
     await invoke('install_package', { sha256: sha256.value, id: id });
   } catch (e) {
-    alert(e);
+    await invoke('error_dialog', {
+      title: t('错误'),
+      message: t('部署包失败，请重试') + '\n\n' + e,
+    });
+    step.value = 1;
+    subStep.value = 0;
+    return;
+  } finally {
+    unlisten();
   }
-  unlisten();
 
   percent.value = 99;
   current.value = t('很快就好……');
@@ -674,7 +713,10 @@ async function install(): Promise<void> {
     try {
       await invoke('create_desktop_lnk');
     } catch (e) {
-      alert(e);
+      await invoke('error_dialog', {
+        title: t('错误'),
+        message: t('创建桌面快捷方式失败') + '\n\n' + e,
+      });
     }
   }
 
