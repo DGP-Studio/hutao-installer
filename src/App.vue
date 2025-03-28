@@ -556,6 +556,7 @@ async function loginSkip(): Promise<void> {
 
 async function install(): Promise<void> {
   step.value = 4;
+  percent.value = 0;
   current.value = t('准备下载……');
   const package_exists_and_valid = await invoke<boolean>('check_temp_package_valid', { 'sha256': sha256.value });
   if (!package_exists_and_valid) {
