@@ -190,6 +190,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             .maximizable(false)
             .transparent(true)
             .inner_size(650.0, 350.0)
+            .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required")
             .center();
             if !cfg!(debug_assertions) {
                 main_window = main_window.data_directory(temp_dir_for_data).visible(false);
