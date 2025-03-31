@@ -29,7 +29,7 @@
           </div>
           <div v-if="CONFIG.is_update" class="update-info">
             <span>{{ t('更新信息: x', [version_info]) }}</span>
-            <vue-markdown :source="changelog" class="changelog" />
+            <vue-markdown :source="changelog" class="changelog" @click="handleMarkdownClick" />
           </div>
           <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
             <span>{{ t('开始') }}</span>
@@ -502,7 +502,7 @@ const CONFIG: Config = reactive({
 const emailRegex = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
 
 async function openTos(): Promise<void> {
-  await invoke('open_tos');
+  await invoke('open_browser', { url: 'https://hut.ao/statements/tos.html' });
 }
 
 async function start(): Promise<void> {
@@ -760,6 +760,19 @@ async function testMirrorSpeed(): Promise<void> {
     (a, b) => (b.speed ?? -1) - (a.speed ?? -1),
   );
   selectedMirror.value = mirrors.value[0];
+}
+
+async function handleMarkdownClick(e: MouseEvent): Promise<void> {
+  const target = (e.target as HTMLElement).closest('a');
+  if (!target) {
+    return;
+  }
+
+  e.preventDefault();
+  const href = target.getAttribute('href');
+  if (href) {
+    await invoke('open_browser', { url: href });
+  }
 }
 
 onMounted(async () => {

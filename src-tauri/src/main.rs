@@ -162,7 +162,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::self_update,
             installer::get_config,
             installer::get_changelog,
-            installer::open_tos,
+            installer::open_browser,
             installer::speedtest_5mb,
             installer::check_temp_package_valid,
             installer::head_package,

@@ -127,9 +127,8 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn open_tos() -> Result<(), String> {
-    let url = "https://hut.ao/statements/tos.html";
-    if webbrowser::open(url).is_ok() {
+pub async fn open_browser(url: String) -> Result<(), String> {
+    if webbrowser::open(&url).is_ok() {
         Ok(())
     } else {
         Err("Failed to open the link".to_string())
