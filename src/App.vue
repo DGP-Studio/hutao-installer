@@ -5,6 +5,20 @@
         <span class="fui-Spinner__spinnerTail"></span>
       </span>
       <div class="init-self-updating" v-show="selfUpdating">{{ t('正在更新安装器……') }}</div>
+      <div v-show="selfUpdateFailed" class="init-self-updating">
+        {{ t('更新安装器失败，是否重试') }}
+      </div>
+      <div v-show="selfUpdateFailed" class="init-self-updating">
+        {{ selfUpdateError }}
+      </div>
+      <div v-show="selfUpdateFailed" class="init-self-update-failed">
+        <button class="btn btn-update-failed" @click="setSelfUpdateRetry(true)">
+          <span>{{ t('重试') }}</span>
+        </button>
+        <button class="btn btn-update-failed" @click="setSelfUpdateRetry(false)">
+          <span>{{ t('跳过') }}</span>
+        </button>
+      </div>
     </div>
     <div v-show="init" class="content">
       <div class="image">
@@ -151,6 +165,14 @@
   font-size: 14px;
 }
 
+.init-self-update-failed {
+  margin-top: 16px;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
 .content {
   display: flex;
   min-height: 100vh;
@@ -249,6 +271,11 @@
 .btn-login {
   height: 40px;
   width: 140px;
+}
+
+.btn-update-failed {
+  height: 40px;
+  width: 100px;
 }
 
 .btn-install {
@@ -446,7 +473,7 @@
 <script setup lang="ts">
 import VueMarkdown from 'vue-markdown-render';
 import { useI18n } from 'vue-i18n';
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, Ref, ref } from 'vue';
 import { getCurrentWindow, invoke, listen } from './tauri';
 import Checkbox from './components/Checkbox.vue';
 import CircleSuccess from './components/CircleSuccess.vue';
@@ -457,6 +484,9 @@ import { getLang } from './i18n';
 const { t } = useI18n();
 const init = ref(false);
 const selfUpdating = ref(false);
+const selfUpdateFailed = ref(false);
+const selfUpdateRetry = ref<boolean | null>(null);
+const selfUpdateError = ref<string | null>(null);
 
 const subStepList: ReadonlyArray<string> = [
   t('下载安装包'),
@@ -775,6 +805,21 @@ async function handleMarkdownClick(e: MouseEvent): Promise<void> {
   }
 }
 
+async function setSelfUpdateRetry(value: boolean): Promise<void> {
+  selfUpdateRetry.value = value;
+}
+
+async function waitForRefValid(ref: Ref) {
+  return new Promise((resolve) => {
+    const interval = setInterval(() => {
+      if (ref.value !== null) {
+        clearInterval(interval);
+        resolve(ref.value);
+      }
+    }, 100);
+  });
+}
+
 onMounted(async () => {
   const win = getCurrentWindow();
   await win.setTitle('Snap Hutao Deployment');
@@ -782,15 +827,40 @@ onMounted(async () => {
 
   let config = await invoke<Config>('get_config');
   Object.assign(CONFIG, config);
-  let patch_data = await fetchPatchData();
+  let patch_data: GenericPatchData;
+  try {
+    patch_data = await fetchPatchData();
+    isOversea.value = await fetchIsOversea();
+  } catch (e) {
+    await invoke('error_dialog', {
+      title: t('错误'),
+      message: t('无法连接到胡桃 API，请检查网络后重启安装器') + '\n\n' + e,
+    });
+    await invoke('exit');
+    return;
+  }
   mirrors.value = patch_data.mirrors;
   sha256.value = patch_data.sha256;
-  isOversea.value = await fetchIsOversea();
 
   if (!config.is_auto_update) {
     if (await invoke<boolean>('need_self_update')) {
-      selfUpdating.value = true;
-      await invoke('self_update');
+      while (true) {
+        selfUpdating.value = true;
+        selfUpdateFailed.value = false;
+        selfUpdateRetry.value = null;
+        try {
+          await invoke('self_update');
+        } catch (e) {
+          selfUpdating.value = false;
+          selfUpdateFailed.value = true;
+          selfUpdateError.value = e as string;
+          await waitForRefValid(selfUpdateRetry);
+          // noinspection PointlessBooleanExpressionJS
+          if (selfUpdateRetry.value === false) {
+            break;
+          }
+        }
+      }
     }
   }
 

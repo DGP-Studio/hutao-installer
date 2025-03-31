@@ -174,6 +174,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::kill_process,
             installer::install_package,
             installer::create_desktop_lnk,
+            installer::exit,
             installer::launch_and_exit
         ])
         .manage(args)

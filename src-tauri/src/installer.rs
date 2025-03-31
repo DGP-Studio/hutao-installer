@@ -107,19 +107,35 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let _ = tokio::fs::remove_file(&outdated).await;
 
     let res = tokio::fs::rename(&exe_path, &outdated).await;
-    if res.is_err() {
-        return Err(format!("Failed to rename executable: {:?}", res.err()));
+    if let Err(e) = res {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(format!("Failed to rename executable: {:?}", e));
+        }
     }
 
     let res = REQUEST_CLIENT
         .get("https://api.qhy04.com/hutaocdn/deployment")
         .send()
-        .await
-        .expect("failed to download new installer");
-    let new_installer_blob = res.bytes().await.expect("failed to download new installer");
-    tokio::fs::write(&exe_path, new_installer_blob)
-        .await
-        .expect("failed to write new installer");
+        .await;
+    if res.is_err() {
+        return Err(format!("Failed to download new installer: {:?}", res.err()));
+    }
+    let res = res.unwrap();
+    let new_installer_blob = res.bytes().await;
+    if new_installer_blob.is_err() {
+        return Err(format!(
+            "Failed to get new installer content: {:?}",
+            new_installer_blob.err()
+        ));
+    }
+    let new_installer_blob = new_installer_blob.unwrap();
+    let write_res = tokio::fs::write(&exe_path, new_installer_blob).await;
+    if write_res.is_err() {
+        return Err(format!(
+            "Failed to write new installer: {:?}",
+            write_res.err()
+        ));
+    }
     let _ = run_elevated(&exe_path, "");
     app.exit(0);
 
@@ -497,6 +513,11 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
         .map_err(|e| format!("Failed to save lnk: {:?}", e))?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn exit(app: AppHandle) {
+    app.exit(0);
 }
 
 #[tauri::command]
