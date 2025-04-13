@@ -41,10 +41,10 @@ jobs:
       - name: Upload PDB to Sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_PROJECT: installer
         run: |
           pnpm add @sentry/cli
-          ./node_modules/.bin/sentry-cli debug-files upload --include-source ./src-tauri/target/release/hutao-installer.pdb
+          ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao-installer.pdb
       - name: Copy Binary
         run: copy src-tauri/target/release/hutao-installer.exe Snap.Hutao.Deployment.exe
       - name: Artifact
