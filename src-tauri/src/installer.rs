@@ -1,4 +1,3 @@
-use crate::utils::process::is_process_running;
 use crate::{
     cli::arg::UpdateArgs,
     fs::{create_http_stream, create_target_file, progressed_copy},
@@ -7,6 +6,7 @@ use crate::{
         dir::get_desktop,
         hash::run_sha256_file_hash_async,
         package_manager::{add_package, try_get_hutao_version},
+        process::is_process_running,
         uac::run_elevated,
     },
     REQUEST_CLIENT,

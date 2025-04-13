@@ -1,6 +1,5 @@
 use std::str::FromStr;
-use winreg::enums::HKEY_LOCAL_MACHINE;
-use winreg::RegKey;
+use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 pub fn get_windows_version() -> (u32, u32, u32, u32) {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);

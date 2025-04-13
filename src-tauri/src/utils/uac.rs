@@ -1,13 +1,20 @@
-use std::ffi::{c_void, OsStr};
-use std::mem::{size_of, zeroed};
-use std::ptr::null_mut;
-use windows::core::{w, HSTRING, PCWSTR};
-use windows::Win32::Foundation::HANDLE;
-use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
-use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
-use windows::Win32::UI::Shell::{
-    ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+use std::{
+    ffi::{c_void, OsStr},
+    mem::{size_of, zeroed},
+    ptr::null_mut,
 };
+use windows::{
+    core::{w, HSTRING, PCWSTR},
+    Win32::{
+        Foundation::HANDLE,
+        Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY},
+        System::Threading::{GetCurrentProcess, OpenProcessToken},
+        UI::Shell::{
+            ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+        },
+    },
+};
+
 pub struct SendableHandle(pub HANDLE);
 unsafe impl Send for SendableHandle {}
 unsafe impl Sync for SendableHandle {}

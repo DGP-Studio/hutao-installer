@@ -35,10 +35,8 @@ pub async fn add_package(
     let options = AddPackageOptions::new()?;
     let _ = options.SetForceAppShutdown(true);
     let _ = options.SetRetainFilesOnFailure(true);
-    let op: windows_future::IAsyncOperationWithProgress<
-        DeploymentResult,
-        DeploymentProgress,
-    > = package_manager.AddPackageByUriAsync(&package_uri, &options)?;
+    let op: windows_future::IAsyncOperationWithProgress<DeploymentResult, DeploymentProgress> =
+        package_manager.AddPackageByUriAsync(&package_uri, &options)?;
     let progress_sink: windows_future::AsyncOperationProgressHandler<
         DeploymentResult,
         DeploymentProgress,

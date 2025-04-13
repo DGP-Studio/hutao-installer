@@ -1,6 +1,5 @@
 use crate::utils::hash::run_md5_hash;
-use winreg::enums::HKEY_LOCAL_MACHINE;
-use winreg::RegKey;
+use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 pub fn get_device_id() -> Result<String, String> {
     let username = whoami::username();
