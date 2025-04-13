@@ -613,7 +613,7 @@ async function install(): Promise<void> {
     progressInterval.value = setInterval(() => {
       const now = performance.now();
       const time_diff = now - stat.lastTime;
-      if (time_diff > 100) {
+      if (time_diff > 500) {
         stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
         stat.speedLastSize = total_downloaded_size;
         stat.lastTime = now;
