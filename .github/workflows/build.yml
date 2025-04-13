@@ -38,6 +38,13 @@ jobs:
           (Get-Content ./src-tauri/Cargo.toml -Raw) -replace '(?m)^(version = "\d+\.\d+\.\d+)', "version = `"$TAG-$PKGVER+$BUILDMETA" | Set-Content ./src-tauri/Cargo.toml -Encoding utf8
       - name: Build
         run: pnpm build
+      - name: Upload PDB to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          pnpm add @sentry/cli
+          ./node_modules/.bin/sentry-cli debug-files upload --include-source ./src-tauri/target/release/hutao-installer.pdb
       - name: Copy Binary
         run: copy src-tauri/target/release/hutao-installer.exe Snap.Hutao.Deployment.exe
       - name: Artifact
@@ -45,6 +52,11 @@ jobs:
         with:
           name: deployment
           path: Snap.Hutao.Deployment.exe
+      - name: pdb
+        uses: actions/upload-artifact@v4.6.0
+        with:
+          name: deployment
+          path: src-tauri/target/release/hutao-installer.pdb
   sync:
     runs-on: windows-latest
     needs: build
