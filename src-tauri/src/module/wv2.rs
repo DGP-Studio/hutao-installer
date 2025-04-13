@@ -1,5 +1,6 @@
 use std::ptr::null_mut;
 
+use crate::REQUEST_CLIENT;
 use windows::{
     core::{HRESULT, PCWSTR},
     Win32::{
@@ -7,16 +8,18 @@ use windows::{
         System::LibraryLoader::GetModuleHandleW,
         UI::{
             Controls::{
-                TASKDIALOGCONFIG, TASKDIALOG_NOTIFICATIONS, TDE_CONTENT,
-                TDF_SHOW_MARQUEE_PROGRESS_BAR, TDF_USE_HICON_MAIN, TDM_SET_PROGRESS_BAR_MARQUEE,
+                TaskDialogIndirect, TASKDIALOGCONFIG, TASKDIALOGCONFIG_0, TASKDIALOG_NOTIFICATIONS,
+                TDCBF_CANCEL_BUTTON, TDE_CONTENT, TDF_SHOW_MARQUEE_PROGRESS_BAR,
+                TDF_USE_HICON_MAIN, TDM_ENABLE_BUTTON, TDM_SET_PROGRESS_BAR_MARQUEE,
                 TDM_UPDATE_ELEMENT_TEXT, TDN_CREATED, TDN_DESTROYED,
             },
-            WindowsAndMessaging::{LoadIconW, SendMessageW, WM_CLOSE},
+            WindowsAndMessaging::{
+                LoadIconW, SendMessageW, SetProcessDPIAware, HICON, IDCANCEL, IDI_APPLICATION,
+                WM_CLOSE,
+            },
         },
     },
 };
-
-use crate::REQUEST_CLIENT;
 
 pub struct SendableHwnd(pub *mut Option<HWND>);
 unsafe impl Send for SendableHwnd {}
@@ -29,8 +32,9 @@ impl SendableHwnd {
 
 pub async fn install_webview2(command: String) {
     unsafe {
-        let _ = windows::Win32::UI::WindowsAndMessaging::SetProcessDPIAware();
+        let _ = SetProcessDPIAware();
     }
+
     let title = "安装 WebView2 运行时";
     let heading = "当前系统缺少 WebView2 运行时，正在安装...";
     let content = "正在下载安装程序...";
@@ -46,8 +50,10 @@ pub async fn install_webview2(command: String) {
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect::<Vec<u16>>();
+
     let mut dialog_hwnd: Option<HWND> = None;
     let ptr_dialog_hwnd = SendableHwnd(&mut dialog_hwnd as *mut Option<HWND>);
+
     unsafe extern "system" fn callback(
         hwnd: HWND,
         msg: TASKDIALOG_NOTIFICATIONS,
@@ -76,15 +82,11 @@ pub async fn install_webview2(command: String) {
         };
         S_OK
     }
+
     tokio::task::spawn_blocking(move || {
         // get HICON of the current process
         let hmodule = unsafe { GetModuleHandleW(PCWSTR(null_mut())).unwrap() };
-        let hicon = unsafe {
-            LoadIconW(
-                Some(hmodule.into()),
-                windows::Win32::UI::WindowsAndMessaging::IDI_APPLICATION,
-            )
-        };
+        let hicon = unsafe { LoadIconW(Some(hmodule.into()), IDI_APPLICATION) };
 
         let config: TASKDIALOGCONFIG = TASKDIALOGCONFIG {
             cbSize: u32::try_from(size_of::<TASKDIALOGCONFIG>()).unwrap(),
@@ -95,34 +97,58 @@ pub async fn install_webview2(command: String) {
             dwFlags: TDF_SHOW_MARQUEE_PROGRESS_BAR | TDF_USE_HICON_MAIN,
             pfCallback: Some(callback),
             lpCallbackData: ptr_dialog_hwnd.as_isize(),
-            dwCommonButtons: windows::Win32::UI::Controls::TDCBF_CANCEL_BUTTON,
-            Anonymous1: windows::Win32::UI::Controls::TASKDIALOGCONFIG_0 {
+            dwCommonButtons: TDCBF_CANCEL_BUTTON,
+            Anonymous1: TASKDIALOGCONFIG_0 {
                 hMainIcon: if let Ok(hicon) = hicon {
                     hicon
                 } else {
-                    windows::Win32::UI::WindowsAndMessaging::HICON(null_mut())
+                    HICON(null_mut())
                 },
             },
             ..TASKDIALOGCONFIG::default()
         };
-        let _ =
-            unsafe { windows::Win32::UI::Controls::TaskDialogIndirect(&config, None, None, None) };
+        let _ = unsafe { TaskDialogIndirect(&config, None, None, None) };
     });
+
     // use reqwest to download the installer
     let res = REQUEST_CLIENT
         .get("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
         .send()
-        .await
-        .expect("failed to download WebView2 installer");
-    let wv2_installer_blob = res
-        .bytes()
-        .await
-        .expect("failed to download WebView2 installer");
+        .await;
+    if let Err(e) = res {
+        let hwnd = dialog_hwnd.take();
+        unsafe {
+            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+        }
+        error_dialog(format!("WebView2 运行时下载失败: {}", e));
+        std::process::exit(0);
+    }
+    let res = res.unwrap();
+
+    let wv2_installer_blob = res.bytes().await;
+    if let Err(e) = wv2_installer_blob {
+        let hwnd = dialog_hwnd.take();
+        unsafe {
+            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+        }
+        error_dialog(format!("WebView2 运行时下载失败: {}", e));
+        std::process::exit(0);
+    }
+    let wv2_installer_blob = wv2_installer_blob.unwrap();
+
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("MicrosoftEdgeWebview2Setup.exe");
-    tokio::fs::write(&installer_path, wv2_installer_blob)
-        .await
-        .expect("failed to write installer to temp dir");
+
+    let write_res = tokio::fs::write(&installer_path, wv2_installer_blob).await;
+    if let Err(e) = write_res {
+        let hwnd = dialog_hwnd.take();
+        unsafe {
+            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+        }
+        error_dialog(format!("WebView2 运行时安装程序写入失败: {}", e));
+        std::process::exit(0);
+    }
+
     // change content of the dialog
     let content = "正在安装 WebView2 运行时...";
     let content_utf16_nul = content
@@ -136,16 +162,31 @@ pub async fn install_webview2(command: String) {
             Some(WPARAM(TDE_CONTENT.0.try_into().unwrap())),
             Some(LPARAM(content_utf16_nul.as_ptr() as isize)),
         );
+        SendMessageW(
+            *dialog_hwnd.as_ref().unwrap(),
+            TDM_ENABLE_BUTTON.0 as u32,
+            Some(WPARAM(IDCANCEL.0 as usize)),
+            Some(LPARAM(0)),
+        )
     }
+
     // run the installer
     let status = tokio::process::Command::new(installer_path.clone())
         .arg("/install")
         .status()
-        .await
-        .expect("failed to run installer");
+        .await;
+    if let Err(e) = status {
+        let hwnd = dialog_hwnd.take();
+        unsafe {
+            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+        }
+        error_dialog(format!("WebView2 运行时安装失败: {}", e));
+        std::process::exit(0);
+    }
+    let status = status.unwrap();
+
     let _ = tokio::fs::remove_file(installer_path).await;
     if status.success() {
-        dialog_hwnd.take();
         // close the dialog
         let hwnd = dialog_hwnd.take();
         unsafe {
@@ -160,11 +201,15 @@ pub async fn install_webview2(command: String) {
         unsafe {
             SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
         }
-        rfd::MessageDialog::new()
-            .set_title("出错了")
-            .set_description("WebView2 运行时安装失败")
-            .set_level(rfd::MessageLevel::Error)
-            .show();
+        error_dialog("WebView2 运行时安装失败".to_string());
         std::process::exit(0);
     }
+}
+
+fn error_dialog(description: String) {
+    rfd::MessageDialog::new()
+        .set_title("出错了")
+        .set_description(description)
+        .set_level(rfd::MessageLevel::Error)
+        .show();
 }

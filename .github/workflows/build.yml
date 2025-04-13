@@ -38,9 +38,6 @@ jobs:
           (Get-Content ./src-tauri/Cargo.toml -Raw) -replace '(?m)^(version = "\d+\.\d+\.\d+)', "version = `"$TAG-$PKGVER+$BUILDMETA" | Set-Content ./src-tauri/Cargo.toml -Encoding utf8
       - name: Build
         run: pnpm build
-      - name: Add hosts to Windows hosts file
-        run: |
-          Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "${{ secrets.SENTRY_IP }} sentry.snapgenshin.com"
       - name: Upload PDB to Sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
