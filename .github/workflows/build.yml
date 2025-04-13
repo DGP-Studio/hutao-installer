@@ -44,7 +44,7 @@ jobs:
           SENTRY_PROJECT: installer
         run: |
           pnpm add @sentry/cli
-          ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao-installer.pdb
+          ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao_installer.pdb
       - name: Copy Binary
         run: copy src-tauri/target/release/hutao-installer.exe Snap.Hutao.Deployment.exe
       - name: Artifact
@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4.6.0
         with:
           name: pdb
-          path: src-tauri/target/release/hutao-installer.pdb
+          path: src-tauri/target/release/hutao_installer.pdb
   sync:
     runs-on: windows-latest
     needs: build
