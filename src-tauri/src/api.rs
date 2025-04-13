@@ -56,6 +56,15 @@ pub struct GenericIp {
     pub division: String,
 }
 
+impl Default for GenericIp {
+    fn default() -> Self {
+        Self {
+            ip: "0.0.0.0".to_string(),
+            division: String::new(),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GenericIpResp {
     pub retcode: i32,
@@ -89,8 +98,7 @@ pub struct GenericPatchResp {
     pub data: Option<GenericPatchData>,
 }
 
-#[tauri::command]
-pub async fn generic_is_oversea() -> Result<bool, String> {
+pub async fn generic_get_ip_info() -> Result<GenericIp, String> {
     let url = "https://api.snapgenshin.com/ip";
     let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
@@ -105,8 +113,16 @@ pub async fn generic_is_oversea() -> Result<bool, String> {
     if json.retcode != 0 {
         return Err(format!("Failed to fetch ip: {:?}", json.message));
     }
-    let data = json.data.unwrap();
-    let division = data.division;
+    Ok(json.data.unwrap())
+}
+
+#[tauri::command]
+pub async fn generic_is_oversea() -> Result<bool, String> {
+    let data = generic_get_ip_info().await;
+    if data.is_err() {
+        return Err(format!("Failed to fetch ip info: {:?}", data.err()));
+    }
+    let division = data?.division;
     Ok(division == "Oversea")
 }
 

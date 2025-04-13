@@ -11,13 +11,15 @@ pub mod utils;
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
 use reqwest::header::{HeaderMap, HeaderValue};
+use sentry::protocol::Context;
+use std::collections::BTreeMap;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
 use utils::{
-    hash::run_md5_hash,
+    device::get_device_id,
     uac::{check_elevated, run_elevated},
+    windows_version::get_windows_version,
 };
-use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
@@ -31,7 +33,7 @@ lazy_static::lazy_static! {
 }
 
 fn ua_string() -> String {
-    let winver = nt_version::get();
+    let winver = get_windows_version();
     let cpu_cores = num_cpus::get();
     let wv2ver = tauri::webview_version();
     let wv2ver = if let Ok(ver) = wv2ver {
@@ -45,28 +47,20 @@ fn ua_string() -> String {
         wv2ver,
         winver.0,
         winver.1,
-        winver.2 & 0xffff,
+        winver.2,
         cpu_cores
     )
 }
 
 fn hutao_trace_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
-    let username = whoami::username();
-    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let path = r#"SOFTWARE\Microsoft\Cryptography"#;
-    let key = hklm.open_subkey(&path);
-    if key.is_err() {
+    let hutao_device_id = get_device_id();
+    if hutao_device_id.is_err() {
         return headers;
     }
-
-    let key = key.unwrap();
-    let mac_guid = key.get_value::<String, _>("MachineGuid");
-    let raw_device_id = format!("{}{}", username, mac_guid.unwrap());
-    let hutao_device_id = run_md5_hash(raw_device_id.as_str());
     headers.insert(
         "x-hutao-device-id",
-        HeaderValue::from_str(hutao_device_id.to_ascii_uppercase().as_str()).unwrap(),
+        HeaderValue::from_str(hutao_device_id.unwrap().as_str()).unwrap(),
     );
 
     headers
@@ -75,15 +69,32 @@ fn hutao_trace_headers() -> HeaderMap {
 fn main() {
     use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
     let _ = unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
+
+    let _guard = sentry::init((
+        "https://59ff148bff0f509baf01516d1f075d11@sentry.snapgenshin.com/10",
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            debug: cfg!(debug_assertions),
+            auto_session_tracking: true,
+            sample_rate: 1.0,
+            traces_sample_rate: 1.0,
+            ..Default::default()
+        },
+    ));
+
     let cli = cli::Cli::parse();
     let command = cli.command();
+    let _ = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(configure_sentry_scope(cli.command_as_str()));
+
     let wv2ver = tauri::webview_version();
     if wv2ver.is_err() {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap()
-            .block_on(module::wv2::install_webview2());
+            .block_on(module::wv2::install_webview2(cli.command_as_str()));
         return;
     }
 
@@ -113,9 +124,9 @@ fn main() {
 
 async fn tauri_main(args: Option<UpdateArgs>) {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
-    let (major, minor, build) = nt_version::get();
-    let build = (build & 0xffff) as u16;
-    let is_lower_than_win10_22h2 = major < 10 && build < 19045;
+    let (major, minor, build, revision) = get_windows_version();
+
+    let is_lower_than_win10_22h2 = major < 10 && build < 19045 && revision < 5371;
     let is_lower_than_win11_22h2 = major < 10 && build > 22000 && build < 22621;
     if is_lower_than_win10_22h2 || is_lower_than_win11_22h2 {
         rfd::MessageDialog::new()
@@ -236,4 +247,53 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+async fn configure_sentry_scope(command: String) {
+    let ip_address = api::generic_get_ip_info().await.unwrap_or_default().ip;
+
+    sentry::configure_scope(|scope| {
+        scope.set_context(
+            "app",
+            Context::Other(BTreeMap::from([
+                ("Name".to_string(), "HutaoInstaller".into()),
+                ("Version".to_string(), env!("CARGO_PKG_VERSION").into()),
+                ("Command".to_string(), command.into()),
+            ])),
+        );
+
+        let wv2ver_ = tauri::webview_version();
+        scope.set_context(
+            "WebView2",
+            Context::Other(BTreeMap::from([
+                ("Supported".to_string(), wv2ver_.is_ok().into()),
+                ("Version".to_string(), wv2ver_.unwrap_or_default().into()),
+            ])),
+        );
+
+        scope.set_user(
+            sentry::User {
+                id: Some(get_device_id().unwrap_or_default()),
+                ip_address: Some(ip_address.parse().unwrap()),
+                ..Default::default()
+            }
+            .into(),
+        );
+
+        let windows_version = get_windows_version();
+        scope.set_context(
+            "os",
+            Context::Other(BTreeMap::from([
+                ("name".to_string(), "Windows".into()),
+                (
+                    "version".to_string(),
+                    format!(
+                        "{}.{}.{}.{}",
+                        windows_version.0, windows_version.1, windows_version.2, windows_version.3
+                    )
+                    .into(),
+                ),
+            ])),
+        );
+    });
 }

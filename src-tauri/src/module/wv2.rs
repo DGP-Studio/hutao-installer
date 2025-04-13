@@ -27,7 +27,7 @@ impl SendableHwnd {
     }
 }
 
-pub async fn install_webview2() {
+pub async fn install_webview2(command: String) {
     unsafe {
         let _ = windows::Win32::UI::WindowsAndMessaging::SetProcessDPIAware();
     }
@@ -151,7 +151,9 @@ pub async fn install_webview2() {
         unsafe {
             SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
         }
-        let _ = tokio::process::Command::new(std::env::current_exe().unwrap()).spawn();
+        let _ = tokio::process::Command::new(std::env::current_exe().unwrap())
+            .arg(command.clone())
+            .spawn();
         // delete the installer
     } else {
         let hwnd = dialog_hwnd.take();
