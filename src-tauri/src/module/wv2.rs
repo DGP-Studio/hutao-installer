@@ -1,6 +1,8 @@
+use crate::{
+    utils::process::{is_process_running, wait_for_pid},
+    REQUEST_CLIENT,
+};
 use std::ptr::null_mut;
-
-use crate::REQUEST_CLIENT;
 use windows::{
     core::{HRESULT, PCWSTR},
     Win32::{
@@ -110,43 +112,50 @@ pub async fn install_webview2(command: String) {
         let _ = unsafe { TaskDialogIndirect(&config, None, None, None) };
     });
 
-    // use reqwest to download the installer
-    let res = REQUEST_CLIENT
-        .get("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
-        .send()
-        .await;
-    if let Err(e) = res {
-        let hwnd = dialog_hwnd.take();
-        unsafe {
-            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
-        }
-        error_dialog(format!("WebView2 运行时下载失败: {}", e));
-        std::process::exit(0);
+    while dialog_hwnd.is_none() {
+        std::hint::spin_loop();
     }
-    let res = res.unwrap();
-
-    let wv2_installer_blob = res.bytes().await;
-    if let Err(e) = wv2_installer_blob {
-        let hwnd = dialog_hwnd.take();
-        unsafe {
-            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
-        }
-        error_dialog(format!("WebView2 运行时下载失败: {}", e));
-        std::process::exit(0);
-    }
-    let wv2_installer_blob = wv2_installer_blob.unwrap();
 
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("MicrosoftEdgeWebview2Setup.exe");
-
-    let write_res = tokio::fs::write(&installer_path, wv2_installer_blob).await;
-    if let Err(e) = write_res {
-        let hwnd = dialog_hwnd.take();
-        unsafe {
-            SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+    let webview_installer_running_info =
+        is_process_running("MicrosoftEdgeWebview2Setup.exe".to_string(), None).unwrap_or_default();
+    if !webview_installer_running_info.0 {
+        // use reqwest to download the installer
+        let res = REQUEST_CLIENT
+            .get("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
+            .send()
+            .await;
+        if let Err(e) = res {
+            let hwnd = dialog_hwnd.take();
+            unsafe {
+                SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+            }
+            error_dialog(format!("WebView2 运行时下载失败: {}", e));
+            std::process::exit(0);
         }
-        error_dialog(format!("WebView2 运行时安装程序写入失败: {}", e));
-        std::process::exit(0);
+        let res = res.unwrap();
+
+        let wv2_installer_blob = res.bytes().await;
+        if let Err(e) = wv2_installer_blob {
+            let hwnd = dialog_hwnd.take();
+            unsafe {
+                SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+            }
+            error_dialog(format!("WebView2 运行时下载失败: {}", e));
+            std::process::exit(0);
+        }
+        let wv2_installer_blob = wv2_installer_blob.unwrap();
+
+        let write_res = tokio::fs::write(&installer_path, wv2_installer_blob).await;
+        if let Err(e) = write_res {
+            let hwnd = dialog_hwnd.take();
+            unsafe {
+                SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
+            }
+            error_dialog(format!("WebView2 运行时安装程序写入失败: {}", e));
+            std::process::exit(0);
+        }
     }
 
     // change content of the dialog
@@ -167,14 +176,18 @@ pub async fn install_webview2(command: String) {
             TDM_ENABLE_BUTTON.0 as u32,
             Some(WPARAM(IDCANCEL.0 as usize)),
             Some(LPARAM(0)),
-        )
+        );
     }
 
-    // run the installer
-    let status = tokio::process::Command::new(installer_path.clone())
-        .arg("/install")
-        .status()
-        .await;
+    // run or wait the installer
+    let status = if webview_installer_running_info.0 {
+        wait_for_pid(webview_installer_running_info.1.unwrap())
+    } else {
+        tokio::process::Command::new(installer_path.clone())
+            .arg("/install")
+            .status()
+            .await
+    };
     if let Err(e) = status {
         let hwnd = dialog_hwnd.take();
         unsafe {
