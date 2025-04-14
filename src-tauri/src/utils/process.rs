@@ -120,22 +120,24 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
         }
 
         let mut exit_code = 0;
-        let mut wait_result =
-            MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
-        while wait_result != WAIT_OBJECT_0 {
-            if wait_result == WAIT_EVENT(1) {
-                let msg = std::ptr::null_mut();
-                while PeekMessageW(msg, None, 0, 0, PM_REMOVE).into() {
-                    let _ = TranslateMessage(msg);
-                    DispatchMessageW(msg);
+        let mut wait_result;
+        loop {
+            wait_result = MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
+            match wait_result {
+                WAIT_OBJECT_0 => break,
+                WAIT_EVENT(1u32) => {
+                    let msg = std::ptr::null_mut();
+                    while PeekMessageW(msg, None, 0, 0, PM_REMOVE).into() {
+                        let _ = TranslateMessage(msg);
+                        DispatchMessageW(msg);
+                    }
                 }
-                wait_result =
-                    MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
-            } else {
-                return Err(Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    format!("WaitForSingleObject failed for pid {}", pid),
-                ));
+                _ => {
+                    return Err(Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        format!("WaitForSingleObject failed for pid {}", pid),
+                    ));
+                }
             }
         }
 

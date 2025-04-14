@@ -196,15 +196,18 @@ pub async fn install_webview2(command: String) {
         );
     }
 
-    // run or wait the installer
-    let status = if webview_installer_running_info.0 {
-        wait_for_pid(webview_installer_running_info.1.unwrap())
+    let id = if webview_installer_running_info.0 {
+        webview_installer_running_info.1.unwrap()
     } else {
         tokio::process::Command::new(installer_path.clone())
             .arg("/install")
-            .status()
-            .await
+            .spawn()
+            .unwrap()
+            .id()
+            .unwrap()
     };
+
+    let status = wait_for_pid(id);
     if let Err(e) = status {
         let hwnd = dialog_hwnd.take();
         unsafe {
