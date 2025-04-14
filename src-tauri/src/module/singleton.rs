@@ -30,6 +30,7 @@ use windows::{
 };
 
 const WMCOPYDATA_SINGLE_INSTANCE_DATA: usize = 1542;
+const SINGLETON_ID: &str = "HUTAO-INSTALLER-SINGLETON";
 
 pub struct UserData<R: Runtime> {
     pub app: Option<AppHandle<R>>,
@@ -52,10 +53,10 @@ pub struct SingletonState {
     hwnd: Option<isize>,
 }
 
-pub fn init<R: Runtime>(id: String, userdata: UserData<R>) -> (bool, SingletonState) {
-    let clz_name = encode_wide(format!("{id}-sic"));
-    let wnd_name = encode_wide(format!("{id}-siw"));
-    let mtx_name = encode_wide(format!("{id}-sim"));
+pub fn init<R: Runtime>(userdata: UserData<R>) -> (bool, SingletonState) {
+    let clz_name = encode_wide(format!("{SINGLETON_ID}-sic"));
+    let wnd_name = encode_wide(format!("{SINGLETON_ID}-siw"));
+    let mtx_name = encode_wide(format!("{SINGLETON_ID}-sim"));
 
     unsafe {
         let hmutex = CreateMutexW(None, true, PCWSTR(mtx_name.as_ptr()));
@@ -98,14 +99,10 @@ pub fn init<R: Runtime>(id: String, userdata: UserData<R>) -> (bool, SingletonSt
 pub fn init_as_plugin<R: Runtime>() -> TauriPlugin<R> {
     plugin::Builder::new("singleton")
         .setup(|app, _api| {
-            let id = app.config().identifier.clone();
-            let (res, state) = init(
-                id,
-                UserData {
-                    app: Some(app.clone()),
-                    hwnd: std::ptr::null_mut(),
-                },
-            );
+            let (res, state) = init(UserData {
+                app: Some(app.clone()),
+                hwnd: std::ptr::null_mut(),
+            });
             if !res {
                 app.cleanup_before_exit();
                 std::process::exit(0);

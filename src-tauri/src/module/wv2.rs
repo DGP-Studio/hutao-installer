@@ -39,13 +39,10 @@ pub async fn install_webview2(command: String) {
 
     let mut dialog_hwnd: Option<HWND> = None;
 
-    let (res, singleton_state) = singleton::init(
-        "hutao-installer-wv2-mutex".to_string(),
-        UserData::<Wry> {
-            app: None,
-            hwnd: &mut dialog_hwnd as *mut Option<HWND>,
-        },
-    );
+    let (res, singleton_state) = singleton::init(UserData::<Wry> {
+        app: None,
+        hwnd: &mut dialog_hwnd as *mut Option<HWND>,
+    });
     if !res {
         std::process::exit(0);
     }
