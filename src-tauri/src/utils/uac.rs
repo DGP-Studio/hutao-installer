@@ -1,14 +1,8 @@
-use std::{
-    ffi::{c_void, OsStr},
-    mem::{size_of, zeroed},
-    ptr::null_mut,
-};
+use std::{ffi::OsStr, mem::size_of};
 use windows::{
     core::{w, HSTRING, PCWSTR},
     Win32::{
         Foundation::HANDLE,
-        Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY},
-        System::Threading::{GetCurrentProcess, OpenProcessToken},
         UI::Shell::{
             ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
         },
@@ -18,35 +12,6 @@ use windows::{
 pub struct SendableHandle(pub HANDLE);
 unsafe impl Send for SendableHandle {}
 unsafe impl Sync for SendableHandle {}
-
-pub fn check_elevated() -> windows::core::Result<bool> {
-    unsafe {
-        let h_process = GetCurrentProcess();
-        let mut h_token = HANDLE(null_mut());
-        let open_result = OpenProcessToken(h_process, TOKEN_QUERY, &mut h_token);
-        let mut ret_len: u32 = 0;
-        let mut token_info: TOKEN_ELEVATION = zeroed();
-
-        if let Err(e) = open_result {
-            println!("OpenProcessToken {:?}", e);
-            return Err(e);
-        }
-
-        if let Err(e) = GetTokenInformation(
-            h_token,
-            TokenElevation,
-            Some(std::ptr::addr_of_mut!(token_info).cast::<c_void>()),
-            size_of::<TOKEN_ELEVATION>() as u32,
-            &mut ret_len,
-        ) {
-            println!("GetTokenInformation {:?}", e);
-
-            return Err(e);
-        }
-
-        Ok(token_info.TokenIsElevated != 0)
-    }
-}
 
 pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(
     program_path: S,

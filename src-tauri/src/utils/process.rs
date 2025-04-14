@@ -2,18 +2,21 @@ use std::{io::Error, os::windows::process::ExitStatusExt, process::ExitStatus};
 use windows::{
     core::PWSTR,
     Win32::{
-        Foundation::{CloseHandle, WAIT_OBJECT_0},
-        System::Diagnostics::ToolHelp::{
-            CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
-            TH32CS_SNAPPROCESS,
+        Foundation::{CloseHandle, GetLastError, WAIT_EVENT, WAIT_OBJECT_0},
+        System::{
+            Diagnostics::ToolHelp::{
+                CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+                TH32CS_SNAPPROCESS,
+            },
+            Threading::{
+                GetExitCodeProcess, OpenProcess, QueryFullProcessImageNameW, INFINITE,
+                PROCESS_NAME_FORMAT, PROCESS_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION,
+                PROCESS_SYNCHRONIZE,
+            },
         },
-        System::Threading::{
-            GetExitCodeProcess, WaitForSingleObject, INFINITE, PROCESS_QUERY_INFORMATION,
-            PROCESS_SYNCHRONIZE,
-        },
-        System::Threading::{
-            OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
-            PROCESS_QUERY_LIMITED_INFORMATION,
+        UI::WindowsAndMessaging::{
+            DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage, PM_REMOVE,
+            QS_ALLINPUT,
         },
     },
 };
@@ -100,7 +103,11 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
         if handle.is_err() {
             return Err(Error::new(
                 std::io::ErrorKind::PermissionDenied,
-                format!("Failed to open process with pid {}", pid),
+                format!(
+                    "Failed to open process with pid {}, {:?}",
+                    pid,
+                    GetLastError()
+                ),
             ));
         }
 
@@ -114,15 +121,27 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
 
         let result;
         let mut exit_code = 0;
-        let wait_result = WaitForSingleObject(handle, INFINITE);
-        if wait_result != WAIT_OBJECT_0 {
-            return Err(Error::new(
-                std::io::ErrorKind::TimedOut,
-                format!("WaitForSingleObject failed for pid {}", pid),
-            ));
-        } else {
-            result = GetExitCodeProcess(handle, &mut exit_code);
+
+        let mut wait_result =
+            MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
+        while wait_result != WAIT_OBJECT_0 {
+            if wait_result == WAIT_EVENT(1) {
+                let msg = std::ptr::null_mut();
+                while PeekMessageW(*&msg, None, 0, 0, PM_REMOVE).into() {
+                    let _ = TranslateMessage(msg);
+                    DispatchMessageW(*&msg);
+                }
+                wait_result =
+                    MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
+            } else {
+                return Err(Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!("WaitForSingleObject failed for pid {}", pid),
+                ));
+            }
         }
+
+        result = GetExitCodeProcess(handle, &mut exit_code);
 
         let _ = CloseHandle(handle);
         if result.is_err() {

@@ -10,16 +10,13 @@ pub mod utils;
 
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
+use module::singleton;
 use reqwest::header::{HeaderMap, HeaderValue};
 use sentry::protocol::Context;
 use std::collections::BTreeMap;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
-use utils::{
-    device::get_device_id,
-    uac::{check_elevated, run_elevated},
-    windows_version::get_windows_version,
-};
+use utils::{device::get_device_id, windows_version::get_windows_version};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
@@ -98,12 +95,6 @@ fn main() {
         return;
     }
 
-    let elevated = check_elevated().unwrap_or(false);
-    if !elevated {
-        let _ = run_elevated(std::env::current_exe().unwrap(), cli.command_as_str());
-        return;
-    }
-
     match command {
         Command::Install => {
             tokio::runtime::Builder::new_multi_thread()
@@ -152,13 +143,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         return;
     }
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {
-            rfd::MessageDialog::new()
-                .set_title("错误")
-                .set_description("另一个安装器正在运行")
-                .set_level(rfd::MessageLevel::Error)
-                .show();
-        }))
+        .plugin(singleton::init_as_plugin())
         .invoke_handler(tauri::generate_handler![
             // things which can be run directly
             api::generic_is_oversea,

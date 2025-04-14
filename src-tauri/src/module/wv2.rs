@@ -1,8 +1,10 @@
 use crate::{
+    module::singleton::{self, SingletonState, UserData},
     utils::process::{is_process_running, wait_for_pid},
     REQUEST_CLIENT,
 };
 use std::ptr::null_mut;
+use tauri::Wry;
 use windows::{
     core::{HRESULT, PCWSTR},
     Win32::{
@@ -23,19 +25,35 @@ use windows::{
     },
 };
 
-pub struct SendableHwnd(pub *mut Option<HWND>);
-unsafe impl Send for SendableHwnd {}
-unsafe impl Sync for SendableHwnd {}
-impl SendableHwnd {
-    pub fn as_isize(&self) -> isize {
-        self.0 as isize
-    }
+pub struct TaskDialogState {
+    pub hwnd: *mut Option<HWND>,
+    pub state: *const SingletonState,
 }
+unsafe impl Send for TaskDialogState {}
+unsafe impl Sync for TaskDialogState {}
 
 pub async fn install_webview2(command: String) {
     unsafe {
         let _ = SetProcessDPIAware();
     }
+
+    let mut dialog_hwnd: Option<HWND> = None;
+
+    let (res, singleton_state) = singleton::init(
+        "hutao-installer-wv2-mutex".to_string(),
+        UserData::<Wry> {
+            app: None,
+            hwnd: &mut dialog_hwnd as *mut Option<HWND>,
+        },
+    );
+    if !res {
+        std::process::exit(0);
+    }
+
+    let state = TaskDialogState {
+        hwnd: &mut dialog_hwnd as *mut Option<HWND>,
+        state: &singleton_state as *const SingletonState,
+    };
 
     let title = "安装 WebView2 运行时";
     let heading = "当前系统缺少 WebView2 运行时，正在安装...";
@@ -53,9 +71,6 @@ pub async fn install_webview2(command: String) {
         .chain(std::iter::once(0))
         .collect::<Vec<u16>>();
 
-    let mut dialog_hwnd: Option<HWND> = None;
-    let ptr_dialog_hwnd = SendableHwnd(&mut dialog_hwnd as *mut Option<HWND>);
-
     unsafe extern "system" fn callback(
         hwnd: HWND,
         msg: TASKDIALOG_NOTIFICATIONS,
@@ -63,7 +78,9 @@ pub async fn install_webview2(command: String) {
         _l_param: LPARAM,
         lp_ref_data: isize,
     ) -> HRESULT {
-        let conf = lp_ref_data as *mut Option<HWND>;
+        let state = lp_ref_data as *const TaskDialogState;
+        let conf = (*state).hwnd;
+        let singleton_state = (*state).state;
         match msg {
             TDN_CREATED => {
                 (*conf).replace(hwnd);
@@ -77,7 +94,7 @@ pub async fn install_webview2(command: String) {
             TDN_DESTROYED => {
                 if (*conf).is_some() {
                     (*conf).take();
-                    std::process::exit(1);
+                    exit_and_release_mutex(1, &*singleton_state);
                 }
             }
             _ => {}
@@ -98,7 +115,7 @@ pub async fn install_webview2(command: String) {
             pszContent: PCWSTR(content_utf16_nul.as_ptr()),
             dwFlags: TDF_SHOW_MARQUEE_PROGRESS_BAR | TDF_USE_HICON_MAIN,
             pfCallback: Some(callback),
-            lpCallbackData: ptr_dialog_hwnd.as_isize(),
+            lpCallbackData: &state as *const TaskDialogState as isize,
             dwCommonButtons: TDCBF_CANCEL_BUTTON,
             Anonymous1: TASKDIALOGCONFIG_0 {
                 hMainIcon: if let Ok(hicon) = hicon {
@@ -132,7 +149,8 @@ pub async fn install_webview2(command: String) {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
             error_dialog(format!("WebView2 运行时下载失败: {}", e));
-            std::process::exit(0);
+            exit_and_release_mutex(0, &singleton_state);
+            return;
         }
         let res = res.unwrap();
 
@@ -143,7 +161,8 @@ pub async fn install_webview2(command: String) {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
             error_dialog(format!("WebView2 运行时下载失败: {}", e));
-            std::process::exit(0);
+            exit_and_release_mutex(0, &singleton_state);
+            return;
         }
         let wv2_installer_blob = wv2_installer_blob.unwrap();
 
@@ -154,7 +173,8 @@ pub async fn install_webview2(command: String) {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
             error_dialog(format!("WebView2 运行时安装程序写入失败: {}", e));
-            std::process::exit(0);
+            exit_and_release_mutex(0, &singleton_state);
+            return;
         }
     }
 
@@ -194,7 +214,8 @@ pub async fn install_webview2(command: String) {
             SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
         }
         error_dialog(format!("WebView2 运行时安装失败: {}", e));
-        std::process::exit(0);
+        exit_and_release_mutex(0, &singleton_state);
+        return;
     }
     let status = status.unwrap();
 
@@ -208,14 +229,16 @@ pub async fn install_webview2(command: String) {
         let _ = tokio::process::Command::new(std::env::current_exe().unwrap())
             .arg(command.clone())
             .spawn();
-        // delete the installer
+        exit_and_release_mutex(0, &singleton_state);
+        return;
     } else {
         let hwnd = dialog_hwnd.take();
         unsafe {
             SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
         }
         error_dialog("WebView2 运行时安装失败".to_string());
-        std::process::exit(0);
+        exit_and_release_mutex(0, &singleton_state);
+        return;
     }
 }
 
@@ -225,4 +248,9 @@ fn error_dialog(description: String) {
         .set_description(description)
         .set_level(rfd::MessageLevel::Error)
         .show();
+}
+
+fn exit_and_release_mutex(code: i32, state: &SingletonState) {
+    singleton::destroy(state);
+    std::process::exit(code);
 }
