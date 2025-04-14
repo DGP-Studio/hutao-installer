@@ -119,17 +119,15 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
             ));
         }
 
-        let result;
         let mut exit_code = 0;
-
         let mut wait_result =
             MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
         while wait_result != WAIT_OBJECT_0 {
             if wait_result == WAIT_EVENT(1) {
                 let msg = std::ptr::null_mut();
-                while PeekMessageW(*&msg, None, 0, 0, PM_REMOVE).into() {
+                while PeekMessageW(msg, None, 0, 0, PM_REMOVE).into() {
                     let _ = TranslateMessage(msg);
-                    DispatchMessageW(*&msg);
+                    DispatchMessageW(msg);
                 }
                 wait_result =
                     MsgWaitForMultipleObjects(Some(&[handle]), false, INFINITE, QS_ALLINPUT);
@@ -141,7 +139,7 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
             }
         }
 
-        result = GetExitCodeProcess(handle, &mut exit_code);
+        let result = GetExitCodeProcess(handle, &mut exit_code);
 
         let _ = CloseHandle(handle);
         if result.is_err() {

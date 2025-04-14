@@ -5,7 +5,7 @@ pub fn get_device_id() -> Result<String, String> {
     let username = whoami::username();
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Microsoft\Cryptography"#;
-    let key = hklm.open_subkey(&path);
+    let key = hklm.open_subkey(path);
     if key.is_err() {
         return Err(format!("Failed to open registry key: {:?}", key.err()));
     }

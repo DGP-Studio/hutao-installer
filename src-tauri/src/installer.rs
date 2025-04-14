@@ -156,7 +156,7 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
     let exists = try_get_hutao_version().await.unwrap();
 
     let update_args = args.inner().clone();
-    if !update_args.is_none() {
+    if update_args.is_some() {
         let update_args = update_args.unwrap();
         return Ok(Config {
             is_update: true,
@@ -285,13 +285,10 @@ pub async fn check_vcrt() -> Result<bool, String> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"#.to_string();
     let key = hklm.open_subkey(&path);
-    match key {
-        Ok(key) => {
-            if let Ok(installed) = key.get_value::<u32, _>("Installed") {
-                return Ok(installed == 1);
-            }
+    if let Ok(key) = key {
+        if let Ok(installed) = key.get_value::<u32, _>("Installed") {
+            return Ok(installed == 1);
         }
-        Err(_) => {}
     }
     Ok(false)
 }
@@ -301,7 +298,7 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
     let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("vc_redist.x64.exe");
-    let (mut stream, len) = create_http_stream(&url, 0, 0)
+    let (mut stream, len) = create_http_stream(url, 0, 0)
         .await
         .map_err(|e| format!("Failed to download vcrt installer: {:?}", e))?;
     let mut target = create_target_file(installer_path.as_os_str().to_str().unwrap())
@@ -454,19 +451,16 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     let sl = CoCreateInstance::<IShellLink>(&CLSID::ShellLink, None, CLSCTX::INPROC_SERVER)
         .map_err(|e| format!("Failed to create shell link: {:?}", e))?;
 
-    let _ = sl
-        .SetPath(&target)
+    sl.SetPath(&target)
         .map_err(|e| format!("Failed to set shell link path: {:?}", e))?;
-    let _ = sl
-        .SetShowCmd(SW::SHOWNORMAL)
+    sl.SetShowCmd(SW::SHOWNORMAL)
         .map_err(|e| format!("Failed to set shell link show cmd: {:?}", e))?;
 
     let pf = sl
         .QueryInterface::<IPersistFile>()
         .map_err(|e| format!("Failed to query persist file: {:?}", e))?;
 
-    let _ = pf
-        .Save(Some(&lnk), false)
+    pf.Save(Some(&lnk), false)
         .map_err(|e| format!("Failed to save lnk: {:?}", e))?;
 
     Ok(())
@@ -480,6 +474,6 @@ pub async fn exit(app: AppHandle) {
 #[tauri::command]
 pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
-    let _ = run_elevated(target, "".to_string()).map_err(|e| format!("Failed to launch: {:?}", e));
+    let _ = run_elevated(target, "").map_err(|e| format!("Failed to launch: {:?}", e));
     app.exit(0);
 }

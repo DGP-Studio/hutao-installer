@@ -46,18 +46,10 @@ impl<R: Runtime> UserData<R> {
     }
 }
 
+#[derive(Default)]
 pub struct SingletonState {
     mutex: Option<isize>,
     hwnd: Option<isize>,
-}
-
-impl Default for SingletonState {
-    fn default() -> Self {
-        Self {
-            mutex: None,
-            hwnd: None,
-        }
-    }
 }
 
 pub fn init<R: Runtime>(id: String, userdata: UserData<R>) -> (bool, SingletonState) {

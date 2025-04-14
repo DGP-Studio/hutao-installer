@@ -81,7 +81,7 @@ fn main() {
 
     let cli = cli::Cli::parse();
     let command = cli.command();
-    let _ = tokio::runtime::Runtime::new()
+    tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(configure_sentry_scope(cli.command_as_str()));
 

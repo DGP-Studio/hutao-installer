@@ -42,7 +42,7 @@ pub async fn add_package(
         DeploymentProgress,
     > = windows_future::AsyncOperationProgressHandler::new(
         move |_, progress: windows::core::Ref<DeploymentProgress>| {
-            let _ = handler(serde_json::json!(progress.percentage));
+            handler(serde_json::json!(progress.percentage));
             Ok(())
         },
     );

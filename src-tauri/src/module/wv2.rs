@@ -230,7 +230,6 @@ pub async fn install_webview2(command: String) {
             .arg(command.clone())
             .spawn();
         exit_and_release_mutex(0, &singleton_state);
-        return;
     } else {
         let hwnd = dialog_hwnd.take();
         unsafe {
@@ -238,7 +237,6 @@ pub async fn install_webview2(command: String) {
         }
         error_dialog("WebView2 运行时安装失败".to_string());
         exit_and_release_mutex(0, &singleton_state);
-        return;
     }
 }
 
