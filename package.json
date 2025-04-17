@@ -11,7 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.4.1",
+    "@tauri-apps/api": "^2.5.0",
     "async": "^3.2.6",
     "uuid": "^11.1.0",
     "vue": "^3.5.13",
@@ -20,10 +20,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
-    "@rsbuild/core": "^1.3.6",
+    "@rsbuild/core": "^1.3.7",
     "@rsbuild/plugin-node-polyfill": "^1.3.0",
     "@rsbuild/plugin-vue": "^1.0.7",
-    "@tauri-apps/cli": "^2.4.1",
+    "@tauri-apps/cli": "^2.5.0",
     "@types/async": "^3.2.24",
     "compression-webpack-plugin": "^11.1.0",
     "cross-env": "^7.0.3",
@@ -31,7 +31,7 @@
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.29.1"
+    "typescript-eslint": "^8.30.1"
   },
-  "packageManager": "pnpm@10.8.0+sha256.29bf2c5ceaea7991ee82eec15fe7162e0fad816d0c4a6b35a16c01d39274bf69"
+  "packageManager": "pnpm@10.8.1+sha256.d8b2ebbc65cf02c349eca6b45c9640b910f16b6adebdb7b926e9db440e47cac7"
 }
