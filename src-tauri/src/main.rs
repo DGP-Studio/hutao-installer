@@ -134,9 +134,10 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
     let (major, minor, build, revision) = get_windows_version();
 
-    let is_lower_than_win10_22h2 = major <= 10 && build <= 19045 && revision < 5371;
-    let is_lower_than_win11_22h2 = major <= 10 && (22000..22621).contains(&build);
-    if is_lower_than_win10_22h2 || is_lower_than_win11_22h2 {
+    if (major < 10)
+        || (major == 10 && (build < 19045 || (build == 19045 && revision < 5371)))
+        || (major == 10 && (22000..22621).contains(&build))
+    {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("不支持的操作系统版本")
