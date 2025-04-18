@@ -74,7 +74,12 @@ pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, Str
     });
     let exe_path = std::env::current_exe().unwrap();
     let outdated = exe_path.with_extension("old");
+    let outdated_exists = tokio::fs::try_exists(&outdated).await.unwrap();
     let _ = tokio::fs::remove_file(&outdated).await;
+
+    if outdated_exists {
+        return Ok(false);
+    }
 
     let curr_ver = app.package_info().version.clone();
     let url = "https://api.snapgenshin.com/patch/hutao-deployment";
@@ -246,8 +251,8 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
 pub async fn check_temp_package_valid(sha256: String) -> Result<bool, String> {
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
-    let exists = tokio::fs::metadata(installer_path.clone()).await;
-    if exists.is_err() {
+    let exists = tokio::fs::try_exists(installer_path.clone()).await.unwrap();
+    if !exists {
         return Ok(false);
     }
 
