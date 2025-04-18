@@ -399,14 +399,12 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
         ));
     }
     let status = status.unwrap();
-    if !status.success() {
-        if status.code().unwrap() != 3010 {
-            sentry::capture_error(&Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to install vcrt: {:?}", status),
-            ));
-            return Err(format!("Failed to install vcrt: {:?}", status));
-        }
+    if !status.success() && status.code().unwrap() != 3010 {
+        sentry::capture_error(&Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to install vcrt: {:?}", status),
+        ));
+        return Err(format!("Failed to install vcrt: {:?}", status));
     }
     let _ = tokio::fs::remove_file(installer_path).await;
     Ok(())
