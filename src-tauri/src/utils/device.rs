@@ -1,5 +1,4 @@
-use crate::utils::hash::run_md5_hash;
-use crate::utils::SentryCapturable;
+use crate::utils::{hash::run_md5_hash, SentryCapturable};
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 pub fn get_device_id() -> Result<String, String> {

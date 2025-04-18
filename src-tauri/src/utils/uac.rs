@@ -1,9 +1,8 @@
 use std::{ffi::OsStr, mem::size_of};
-use windows::Win32::Foundation::GetLastError;
 use windows::{
     core::{w, HSTRING, PCWSTR},
     Win32::{
-        Foundation::HANDLE,
+        Foundation::{GetLastError, HANDLE},
         UI::Shell::{
             ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
         },

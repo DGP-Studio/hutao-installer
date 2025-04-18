@@ -1,7 +1,6 @@
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::utils::SentryCapturable;
-use crate::REQUEST_CLIENT;
+use crate::{utils::SentryCapturable, REQUEST_CLIENT};
 
 pub async fn create_http_stream(
     url: &str,

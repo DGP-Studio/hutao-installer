@@ -1,4 +1,3 @@
-use crate::utils::SentryCapturable;
 use crate::{
     cli::arg::UpdateArgs,
     fs::{create_http_stream, create_target_file, progressed_copy},
@@ -9,6 +8,7 @@ use crate::{
         package_manager::{add_package, try_get_hutao_version},
         process::is_process_running,
         uac::run_elevated,
+        SentryCapturable,
     },
     REQUEST_CLIENT,
 };

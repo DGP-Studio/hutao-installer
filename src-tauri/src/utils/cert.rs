@@ -1,8 +1,10 @@
 use crate::utils::SentryCapturable;
 use std::ffi::CString;
 use tokio_util::bytes::Bytes;
-use windows::Win32::Foundation::GetLastError;
-use windows::{core::s, Win32::Security::Cryptography::*};
+use windows::{
+    core::s,
+    Win32::{Foundation::GetLastError, Security::Cryptography::*},
+};
 
 pub async fn find_certificate(subject: &str) -> Result<bool, String> {
     unsafe {

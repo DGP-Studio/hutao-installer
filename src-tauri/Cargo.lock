@@ -139,7 +139,7 @@ dependencies = [
  "enumflags2",
  "futures-channel",
  "futures-util",
-    "rand 0.9.1",
+ "rand 0.9.1",
  "raw-window-handle",
  "serde",
  "serde_repr",

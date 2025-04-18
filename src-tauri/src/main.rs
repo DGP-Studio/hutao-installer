@@ -8,7 +8,6 @@ pub mod installer;
 pub mod module;
 pub mod utils;
 
-use crate::utils::SentryCapturable;
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
 use module::singleton;
@@ -17,7 +16,7 @@ use sentry::protocol::Context;
 use std::collections::BTreeMap;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
-use utils::{device::get_device_id, windows_version::get_windows_version};
+use utils::{device::get_device_id, windows_version::get_windows_version, SentryCapturable};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
