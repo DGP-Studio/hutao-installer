@@ -13,7 +13,6 @@ use crate::{
     REQUEST_CLIENT,
 };
 use serde::Serialize;
-use std::io::Error;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
@@ -128,7 +127,7 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let res = tokio::fs::rename(&exe_path, &outdated).await;
     if let Err(e) = res {
         if e.kind() != std::io::ErrorKind::NotFound {
-            sentry::capture_error(&e);
+            sentry_anyhow::capture_anyhow(&anyhow::anyhow!("Failed to rename executable: {:?}", e));
             return Err(format!("Failed to rename executable: {:?}", e));
         }
     }
@@ -150,7 +149,7 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     }
     let new_installer_blob = new_installer_blob.unwrap();
     let write_res = tokio::fs::write(&exe_path, new_installer_blob).await;
-    if write_res.is_err_and_capture() {
+    if write_res.is_err_and_capture("Failed to write new installer") {
         return Err(format!(
             "Failed to write new installer: {:?}",
             write_res.err()
@@ -392,12 +391,12 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
         .arg("/quiet")
         .arg("/norestart")
         .spawn();
-    if cmd.is_err_and_capture() {
+    if cmd.is_err_and_capture("Failed to spawn vcrt installer") {
         return Err(format!("Failed to spawn vcrt installer: {:?}", cmd.err()));
     }
     let mut cmd = cmd.unwrap();
     let status = cmd.wait().await;
-    if status.is_err_and_capture() {
+    if status.is_err_and_capture("Failed to wait for vcrt installer") {
         return Err(format!(
             "Failed to wait for vcrt installer: {:?}",
             status.err()
@@ -405,10 +404,7 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
     }
     let status = status.unwrap();
     if !status.success() && status.code().unwrap() != 3010 {
-        sentry::capture_error(&Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to install vcrt: {:?}", status),
-        ));
+        sentry_anyhow::capture_anyhow(&anyhow::anyhow!("Failed to install vcrt: {:?}", status));
         return Err(format!("Failed to install vcrt: {:?}", status));
     }
     let _ = tokio::fs::remove_file(installer_path).await;
@@ -489,12 +485,12 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
             pid,
         )
     };
-    if handle.is_err_and_capture() {
+    if handle.is_err_and_capture("Failed to open process") {
         return Err(format!("Failed to open process: {:?}", handle.err()));
     }
     let handle = handle.unwrap();
     let ret = unsafe { windows::Win32::System::Threading::TerminateProcess(handle, 1) };
-    if ret.is_err_and_capture() {
+    if ret.is_err_and_capture("Failed to terminate process") {
         return Err(format!("Failed to terminate process: {:?}", ret.err()));
     }
     Ok(())
@@ -530,7 +526,7 @@ pub async fn install_package(
             let _ = window.emit(&id, opr);
         },
     );
-    if install_res.is_err() {
+    if install_res.is_err_and_capture("Failed to install package") {
         return Err(format!(
             "Failed to install package: {:?}",
             install_res.err()
@@ -556,7 +552,7 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     let desktop_path = Path::new(&desktop);
 
     let create_dir_res = tokio::fs::create_dir_all(desktop_path).await;
-    if create_dir_res.is_err_and_capture() {
+    if create_dir_res.is_err_and_capture("Failed to create lnk dir") {
         return Err(format!(
             "Failed to create lnk dir: {:?}",
             create_dir_res.err()
@@ -564,13 +560,13 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     }
 
     let sl = CoCreateInstance::<IShellLink>(&CLSID::ShellLink, None, CLSCTX::INPROC_SERVER);
-    if sl.is_err_and_capture() {
+    if sl.is_err_and_capture("Failed to create shell link") {
         return Err(format!("Failed to create shell link: {:?}", sl.err()));
     }
     let sl = sl.unwrap();
 
     let set_path_res = sl.SetPath(&target);
-    if set_path_res.is_err_and_capture() {
+    if set_path_res.is_err_and_capture("Failed to set shell link path") {
         return Err(format!(
             "Failed to set shell link path: {:?}",
             set_path_res.err()
@@ -578,7 +574,7 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     }
 
     let set_show_cmd_res = sl.SetShowCmd(SW::SHOWNORMAL);
-    if set_show_cmd_res.is_err_and_capture() {
+    if set_show_cmd_res.is_err_and_capture("Failed to set shell link show cmd") {
         return Err(format!(
             "Failed to set shell link show cmd: {:?}",
             set_show_cmd_res.err()
@@ -586,13 +582,13 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     }
 
     let pf = sl.QueryInterface::<IPersistFile>();
-    if pf.is_err_and_capture() {
+    if pf.is_err_and_capture("Failed to query persist file") {
         return Err(format!("Failed to query persist file: {:?}", pf.err()));
     }
     let pf = pf.unwrap();
 
     let save_res = pf.Save(Some(&lnk), false);
-    if save_res.is_err_and_capture() {
+    if save_res.is_err_and_capture("Failed to save lnk") {
         return Err(format!("Failed to save lnk: {:?}", save_res.err()));
     }
 

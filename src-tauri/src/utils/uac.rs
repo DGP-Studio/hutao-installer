@@ -33,7 +33,7 @@ pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(
         ShellExecuteExW(&mut sei)?;
         let process = { sei.hProcess };
         if process.is_invalid() {
-            sentry::capture_error(&windows::core::Error::from_win32());
+            sentry_anyhow::capture_anyhow(&anyhow::Error::from(windows::core::Error::from_win32()));
             return Err(std::io::Error::last_os_error());
         };
         Ok(SendableHandle(process))

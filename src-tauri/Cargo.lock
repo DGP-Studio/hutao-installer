@@ -111,6 +111,9 @@ name = "anyhow"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
+dependencies = [
+    "backtrace",
+]
 
 [[package]]
 name = "ashpd"
@@ -1942,8 +1945,9 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "hutao-installer"
-version = "2.2.4"
+version = "2.2.5"
 dependencies = [
+    "anyhow",
  "chksum-md5",
  "chksum-sha2-256",
  "clap",
@@ -1955,6 +1959,7 @@ dependencies = [
  "rfd",
  "semver",
  "sentry",
+    "sentry-anyhow",
  "serde",
  "serde_json",
  "tauri",
@@ -3821,6 +3826,17 @@ dependencies = [
  "sentry-tracing",
  "tokio",
  "ureq",
+]
+
+[[package]]
+name = "sentry-anyhow"
+version = "0.37.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ddfaa9f4d64827e05f394c72d5628d99bf27f8979ef37b89baf057fb4b8a908"
+dependencies = [
+    "anyhow",
+    "sentry-backtrace",
+    "sentry-core",
 ]
 
 [[package]]

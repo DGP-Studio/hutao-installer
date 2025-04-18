@@ -1,6 +1,6 @@
 [package]
 name = "hutao-installer"
-version = "2.2.4"
+version = "2.2.5"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
@@ -73,6 +73,8 @@ chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
 winsafe = { version = "0.0.23", features = ["shell"] }
 semver = "1"
 sentry = "0.37"
+sentry-anyhow = "0.37"
+anyhow = "1"
 
 [[bin]]
 name = "hutao-installer"

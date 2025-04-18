@@ -148,7 +148,9 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     // set cwd to temp dir
     let temp_dir = std::env::temp_dir();
     let res = std::env::set_current_dir(&temp_dir);
-    if res.is_err_and_capture() {
+    if res.is_err_and_capture(
+        format!("Failed to set current dir to temp dir: {:?}", temp_dir).as_str(),
+    ) {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("无法访问临时文件夹")

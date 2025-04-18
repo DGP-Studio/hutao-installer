@@ -8,13 +8,13 @@ pub mod uac;
 pub mod windows_version;
 
 pub trait SentryCapturable {
-    fn is_err_and_capture(&self) -> bool;
+    fn is_err_and_capture(&self, message: &str) -> bool;
 }
 
-impl<T, E: std::error::Error> SentryCapturable for Result<T, E> {
-    fn is_err_and_capture(&self) -> bool {
+impl<T, E: std::fmt::Debug> SentryCapturable for Result<T, E> {
+    fn is_err_and_capture(&self, message: &str) -> bool {
         if let Err(e) = self {
-            sentry::capture_error(e);
+            sentry_anyhow::capture_anyhow(&anyhow::anyhow!("{}: {:?}", message, e));
             return true;
         }
         false
