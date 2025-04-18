@@ -1,3 +1,4 @@
+use crate::utils::Version;
 use crate::{
     cli::arg::UpdateArgs,
     fs::{create_http_stream, create_target_file, progressed_copy},
@@ -81,6 +82,7 @@ pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, Str
     }
 
     let curr_ver = app.package_info().version.clone();
+    let curr_ver = Version::new(curr_ver.major, curr_ver.minor, curr_ver.patch, 0);
     let url = "https://api.snapgenshin.com/patch/hutao-deployment";
     let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
@@ -100,15 +102,15 @@ pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, Str
     }
     let data = json.data.unwrap();
     // remove last 2 chars
-    let latest_ver = data.version[..data.version.len() - 2].to_string();
-    let latest_ver = semver::Version::parse(&latest_ver);
+    let latest_ver = data.version;
+    let latest_ver = Version::from_string(&latest_ver);
     if latest_ver.is_err() {
         return Err(format!(
             "Failed to parse latest version: {:?}",
             latest_ver.err()
         ));
     }
-    let latest_ver = latest_ver.unwrap();
+    let latest_ver = latest_ver?;
     Ok(curr_ver < latest_ver)
 }
 

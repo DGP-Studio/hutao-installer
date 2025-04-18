@@ -8,6 +8,7 @@ pub mod installer;
 pub mod module;
 pub mod utils;
 
+use crate::utils::Version;
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
 use module::singleton;
@@ -42,9 +43,9 @@ fn ua_string() -> String {
         "HutaoInstaller/{} Webview2/{} Windows/{}.{}.{} Threads/{}",
         env!("CARGO_PKG_VERSION"),
         wv2ver,
-        winver.0,
-        winver.1,
-        winver.2,
+        winver.major,
+        winver.minor,
+        winver.build,
         cpu_cores
     )
 }
@@ -132,12 +133,12 @@ fn main() {
 
 async fn tauri_main(args: Option<UpdateArgs>) {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
-    let (major, minor, build, revision) = get_windows_version();
+    let win_ver = get_windows_version();
+    let win10_22h2_ver = Version::new(10, 0, 19045, 5371);
+    let win11_ver = Version::new(10, 0, 22000, 0);
+    let win11_22h2_ver = Version::new(10, 0, 22621, 0);
 
-    if (major < 10)
-        || (major == 10 && (build < 19045 || (build == 19045 && revision < 5371)))
-        || (major == 10 && (22000..22621).contains(&build))
-    {
+    if win_ver < win10_22h2_ver || (win_ver >= win11_ver && win_ver < win11_22h2_ver) {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("不支持的操作系统版本")
@@ -146,7 +147,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         return;
     }
     // use 22000 as the build number of Windows 11
-    let is_win11 = major == 10 && minor == 0 && build >= 22000;
+    let is_win11 = win_ver >= win11_ver;
     let is_win11_ = is_win11;
 
     // set cwd to temp dir
@@ -298,14 +299,7 @@ async fn configure_sentry_scope(command: String) {
             "os",
             Context::Other(BTreeMap::from([
                 ("name".to_string(), "Windows".into()),
-                (
-                    "version".to_string(),
-                    format!(
-                        "{}.{}.{}.{}",
-                        windows_version.0, windows_version.1, windows_version.2, windows_version.3
-                    )
-                    .into(),
-                ),
+                ("version".to_string(), windows_version.to_string().into()),
             ])),
         );
     });
