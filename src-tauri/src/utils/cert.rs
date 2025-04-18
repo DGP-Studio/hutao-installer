@@ -1,10 +1,7 @@
 use crate::utils::SentryCapturable;
 use std::ffi::CString;
 use tokio_util::bytes::Bytes;
-use windows::{
-    core::s,
-    Win32::{Foundation::GetLastError, Security::Cryptography::*},
-};
+use windows::{core::s, Win32::Security::Cryptography::*};
 
 pub async fn find_certificate(subject: &str) -> Result<bool, String> {
     unsafe {
@@ -17,16 +14,13 @@ pub async fn find_certificate(subject: &str) -> Result<bool, String> {
             Some(store_name as _),
         );
 
-        if h_store.is_err_and_capture("Failed to open store") {
+        if h_store.is_err_and_capture() {
             return Err(format!("Failed to open store: {:?}", h_store.err()));
         }
 
         let h_store = h_store.unwrap();
         if h_store.is_invalid() {
-            sentry::capture_message(
-                format!("Failed to open store: {:?}", GetLastError()).as_str(),
-                sentry::Level::Error,
-            );
+            sentry::capture_error(&windows::core::Error::from_win32());
             return Err("Failed to open store".to_string());
         }
 
@@ -75,25 +69,19 @@ pub async fn install_certificate(
             Some(store_name as _),
         );
 
-        if h_store.is_err_and_capture("Failed to open store") {
+        if h_store.is_err_and_capture() {
             return Err(format!("Failed to open store: {:?}", h_store.err()));
         }
 
         let h_store = h_store.unwrap();
         if h_store.is_invalid() {
-            sentry::capture_message(
-                format!("Failed to open store: {:?}", GetLastError()).as_str(),
-                sentry::Level::Error,
-            );
+            sentry::capture_error(&windows::core::Error::from_win32());
             return Err("Failed to open store".to_string());
         }
 
         let cert = CertCreateCertificateContext(X509_ASN_ENCODING, &content);
         if cert.is_null() {
-            sentry::capture_message(
-                format!("Failed to create certificate context: {:?}", GetLastError()).as_str(),
-                sentry::Level::Error,
-            );
+            sentry::capture_error(&windows::core::Error::from_win32());
             return Err("Failed to create certificate context".to_string());
         }
 
@@ -125,7 +113,7 @@ https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root
 
         let _ = CertFreeCertificateContext(Some(cert));
 
-        if add_res.is_err_and_capture("Failed to add certificate to store") {
+        if add_res.is_err_and_capture() {
             return Err(format!(
                 "Failed to add certificate to store: {:?}",
                 add_res.err()

@@ -31,14 +31,14 @@ importers:
         specifier: ^9.24.0
         version: 9.24.0
       '@rsbuild/core':
-        specifier: ^1.3.8
-        version: 1.3.8
+        specifier: ^1.3.9
+        version: 1.3.9
       '@rsbuild/plugin-node-polyfill':
         specifier: ^1.3.0
-        version: 1.3.0(@rsbuild/core@1.3.8)
+        version: 1.3.0(@rsbuild/core@1.3.9)
       '@rsbuild/plugin-vue':
         specifier: ^1.0.7
-        version: 1.0.7(@rsbuild/core@1.3.8)(vue@3.5.13(typescript@5.8.3))
+        version: 1.0.7(@rsbuild/core@1.3.9)(vue@3.5.13(typescript@5.8.3))
       '@tauri-apps/cli':
         specifier: ^2.5.0
         version: 2.5.0
@@ -211,8 +211,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@rsbuild/core@1.3.8':
-    resolution: {integrity: sha512-J3WfY7XH5RRswfXFFUYizhrsEe/ueufALBSYfNyXpDnzTWgO/NGcjtB7iRgOsXs5z1WLRBMukiFUdDFf0iTcMQ==}
+  '@rsbuild/core@1.3.9':
+    resolution: {integrity: sha512-HnMv2sJA2EZuFhmNg9qULA/O7c2v8niWbp2Khm68SrGToFgYLgfw5qHDBU5tXn/2XljUQ/EEaLQmbZ6Vxwlm9Q==}
     engines: {node: '>=16.10.0'}
     hasBin: true
 
@@ -1712,7 +1712,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@rsbuild/core@1.3.8':
+  '@rsbuild/core@1.3.9':
     dependencies:
       '@rspack/core': 1.3.5(@swc/helpers@0.5.17)
       '@rspack/lite-tapable': 1.0.1
@@ -1722,7 +1722,7 @@ snapshots:
     transitivePeerDependencies:
       - '@rspack/tracing'
 
-  '@rsbuild/plugin-node-polyfill@1.3.0(@rsbuild/core@1.3.8)':
+  '@rsbuild/plugin-node-polyfill@1.3.0(@rsbuild/core@1.3.9)':
     dependencies:
       assert: 2.1.0
       browserify-zlib: 0.2.0
@@ -1748,11 +1748,11 @@ snapshots:
       util: 0.12.5
       vm-browserify: 1.1.2
     optionalDependencies:
-      '@rsbuild/core': 1.3.8
+      '@rsbuild/core': 1.3.9
 
-  '@rsbuild/plugin-vue@1.0.7(@rsbuild/core@1.3.8)(vue@3.5.13(typescript@5.8.3))':
+  '@rsbuild/plugin-vue@1.0.7(@rsbuild/core@1.3.9)(vue@3.5.13(typescript@5.8.3))':
     dependencies:
-      '@rsbuild/core': 1.3.8
+      '@rsbuild/core': 1.3.9
       vue-loader: 17.4.2(vue@3.5.13(typescript@5.8.3))(webpack@5.99.5)
       webpack: 5.99.5
     transitivePeerDependencies:

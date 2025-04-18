@@ -30,15 +30,12 @@ pub fn is_process_running(
     let mut pid: Option<u32> = None;
     unsafe {
         let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if snapshot.is_err_and_capture("Failed to create snapshot") {
+        if snapshot.is_err_and_capture() {
             return Err(format!("Failed to create snapshot: {:?}", snapshot.err()));
         }
         let snapshot = snapshot.unwrap();
         if snapshot.is_invalid() {
-            sentry::capture_message(
-                format!("Failed to create snapshot: {:?}", GetLastError()).as_str(),
-                sentry::Level::Error,
-            );
+            sentry::capture_error(&windows::core::Error::from_win32());
             return Err("Failed to create snapshot: invalid handle".to_string());
         }
         let mut entry: PROCESSENTRY32W = std::mem::zeroed();
@@ -105,7 +102,7 @@ pub fn get_process_path(pid: u32) -> Option<String> {
 pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
     unsafe {
         let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SYNCHRONIZE, false, pid);
-        if handle.is_err_and_capture(format!("Failed to open process with pid {}", pid).as_str()) {
+        if handle.is_err_and_capture() {
             return Err(Error::new(
                 std::io::ErrorKind::PermissionDenied,
                 format!(
@@ -118,10 +115,7 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
 
         let handle = handle?;
         if handle.is_invalid() {
-            sentry::capture_message(
-                format!("Invalid handle for pid {}: {:?}", pid, GetLastError()).as_str(),
-                sentry::Level::Error,
-            );
+            sentry::capture_error(&windows::core::Error::from_win32());
             return Err(Error::new(
                 std::io::ErrorKind::InvalidInput,
                 format!("Invalid handle for pid {}", pid),
@@ -142,20 +136,12 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
                     }
                 }
                 _ => {
-                    sentry::capture_message(
-                        format!(
-                            "WaitForSingleObject failed for pid {} as {:?}: {:?}",
-                            pid,
-                            wait_result,
-                            GetLastError()
-                        )
-                        .as_str(),
-                        sentry::Level::Error,
-                    );
-                    return Err(Error::new(
+                    let err = Error::new(
                         std::io::ErrorKind::TimedOut,
                         format!("WaitForSingleObject failed for pid {}", pid),
-                    ));
+                    );
+                    sentry::capture_error(&err);
+                    return Err(err);
                 }
             }
         }
@@ -163,7 +149,7 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
         let result = GetExitCodeProcess(handle, &mut exit_code);
 
         let _ = CloseHandle(handle);
-        if result.is_err_and_capture(format!("Failed to get exit code for pid {}", pid).as_str()) {
+        if result.is_err_and_capture() {
             return Err(Error::new(
                 std::io::ErrorKind::Other,
                 format!("Failed to get exit code for pid {}", pid),
