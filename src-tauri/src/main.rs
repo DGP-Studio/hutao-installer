@@ -132,7 +132,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     let (major, minor, build, revision) = get_windows_version();
 
     let is_lower_than_win10_22h2 = major < 10 && build < 19045 && revision < 5371;
-    let is_lower_than_win11_22h2 = major < 10 && build >= 22000 && build < 22621;
+    let is_lower_than_win11_22h2 = major < 10 && (22000..22621).contains(&build);
     if is_lower_than_win10_22h2 || is_lower_than_win11_22h2 {
         rfd::MessageDialog::new()
             .set_title("错误")
