@@ -1,3 +1,4 @@
+use crate::utils::SentryCapturable;
 use crate::{
     cli::arg::UpdateArgs,
     fs::{create_http_stream, create_target_file, progressed_copy},
@@ -64,6 +65,12 @@ pub async fn message_dialog(title: String, message: String, window: WebviewWindo
 
 #[tauri::command]
 pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Checking self update".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let exe_path = std::env::current_exe().unwrap();
     let outdated = exe_path.with_extension("old");
     let _ = tokio::fs::remove_file(&outdated).await;
@@ -102,6 +109,12 @@ pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, Str
 
 #[tauri::command]
 pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Self-updating".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let exe_path = std::env::current_exe().unwrap();
     let outdated = exe_path.with_extension("old");
     let _ = tokio::fs::remove_file(&outdated).await;
@@ -109,6 +122,10 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let res = tokio::fs::rename(&exe_path, &outdated).await;
     if let Err(e) = res {
         if e.kind() != std::io::ErrorKind::NotFound {
+            sentry::capture_message(
+                format!("Failed to rename executable: {:?}", e).as_str(),
+                sentry::Level::Error,
+            );
             return Err(format!("Failed to rename executable: {:?}", e));
         }
     }
@@ -130,7 +147,7 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     }
     let new_installer_blob = new_installer_blob.unwrap();
     let write_res = tokio::fs::write(&exe_path, new_installer_blob).await;
-    if write_res.is_err() {
+    if write_res.is_err_and_capture("Failed to write new installer") {
         return Err(format!(
             "Failed to write new installer: {:?}",
             write_res.err()
@@ -144,6 +161,12 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn open_browser(url: String) -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some(format!("Opening browser: {}", url)),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     if webbrowser::open(&url).is_ok() {
         Ok(())
     } else {
@@ -153,7 +176,13 @@ pub async fn open_browser(url: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, String> {
-    let exists = try_get_hutao_version().await.unwrap();
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Getting config".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let exists = try_get_hutao_version().unwrap();
 
     let update_args = args.inner().clone();
     if update_args.is_some() {
@@ -176,6 +205,12 @@ pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, S
 
 #[tauri::command]
 pub async fn get_changelog(lang: String, from: String) -> Result<String, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some(format!("Getting {} changelog: {}", lang, from)),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = format!(
         "https://api.qhy04.com/hutaocdn/changelog?lang={}&from={}",
         lang, from
@@ -223,7 +258,7 @@ pub async fn check_temp_package_valid(sha256: String) -> Result<bool, String> {
         return Err(format!("Failed to hash installer: {:?}", hash.err()));
     }
 
-    let hash = hash.unwrap();
+    let hash = hash?;
     Ok(hash == sha256)
 }
 
@@ -262,14 +297,28 @@ pub async fn download_package(
     id: String,
     window: WebviewWindow,
 ) -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some(format!("Downloading package from {}", mirror_url)),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
-    let (mut stream, len) = create_http_stream(&mirror_url, 0, 0)
-        .await
-        .map_err(|e| format!("Failed to download msix: {:?}", e))?;
-    let mut target = create_target_file(installer_path.as_os_str().to_str().unwrap())
-        .await
-        .map_err(|e| format!("Failed to create msix: {:?}", e))?;
+    let stream_res = create_http_stream(&mirror_url, 0, 0).await;
+    if stream_res.is_err() {
+        return Err(format!("Failed to download msix: {:?}", stream_res.err()));
+    }
+    let (mut stream, len) = stream_res?;
+    let target_file_create_res =
+        create_target_file(installer_path.as_os_str().to_str().unwrap()).await;
+    if target_file_create_res.is_err() {
+        return Err(format!(
+            "Failed to create msix: {:?}",
+            target_file_create_res.err()
+        ));
+    }
+    let mut target = target_file_create_res?;
     let progress_noti = move |downloaded: usize| {
         let _ = window.emit(&id, serde_json::json!((downloaded, len)));
     };
@@ -282,6 +331,12 @@ pub async fn download_package(
 
 #[tauri::command]
 pub async fn check_vcrt() -> Result<bool, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Checking vcrt".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"#.to_string();
     let key = hklm.open_subkey(&path);
@@ -295,15 +350,32 @@ pub async fn check_vcrt() -> Result<bool, String> {
 
 #[tauri::command]
 pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Installing vcrt".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("vc_redist.x64.exe");
-    let (mut stream, len) = create_http_stream(url, 0, 0)
-        .await
-        .map_err(|e| format!("Failed to download vcrt installer: {:?}", e))?;
-    let mut target = create_target_file(installer_path.as_os_str().to_str().unwrap())
-        .await
-        .map_err(|e| format!("Failed to create vcrt installer: {:?}", e))?;
+    let stream_res = create_http_stream(url, 0, 0).await;
+    if stream_res.is_err() {
+        return Err(format!(
+            "Failed to download vcrt installer: {:?}",
+            stream_res.err()
+        ));
+    }
+    let (mut stream, len) = stream_res?;
+    let target_file_create_res =
+        create_target_file(installer_path.as_os_str().to_str().unwrap()).await;
+    if target_file_create_res.is_err() {
+        return Err(format!(
+            "Failed to create vcrt installer: {:?}",
+            target_file_create_res.err()
+        ));
+    }
+    let mut target = target_file_create_res?;
     let progress_noti = move |downloaded: usize| {
         let _ = window.emit(&id, serde_json::json!((downloaded, len)));
     };
@@ -311,21 +383,29 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
     // close streams
     drop(stream);
     drop(target);
+
     let cmd = tokio::process::Command::new(&installer_path)
         .arg("/install")
         .arg("/quiet")
         .arg("/norestart")
         .spawn();
-    if let Err(e) = cmd {
-        return Err(format!("Failed to run vcrt installer: {:?}", e));
+    if cmd.is_err_and_capture("Failed to spawn vcrt installer") {
+        return Err(format!("Failed to spawn vcrt installer: {:?}", cmd.err()));
     }
     let mut cmd = cmd.unwrap();
     let status = cmd.wait().await;
-    if let Err(e) = status {
-        return Err(format!("Failed to wait for vcrt installer: {:?}", e));
+    if status.is_err_and_capture("Failed to wait for vcrt installer") {
+        return Err(format!(
+            "Failed to wait for vcrt installer: {:?}",
+            status.err()
+        ));
     }
     let status = status.unwrap();
     if !status.success() {
+        sentry::capture_message(
+            format!("Failed to install vcrt: {:?}", status).as_str(),
+            sentry::Level::Error,
+        );
         return Err(format!("Failed to install vcrt: {:?}", status));
     }
     let _ = tokio::fs::remove_file(installer_path).await;
@@ -334,16 +414,28 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
 
 #[tauri::command]
 pub async fn check_globalsign_r45(window: WebviewWindow) -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Checking globalsign r45 certificate".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let find_res = find_certificate("BE, GlobalSign nv-sa, GlobalSign Code Signing Root R45").await;
     if find_res.is_err() {
         return Err(format!("Failed to find certificate: {:?}", find_res.err()));
     }
 
-    let found = find_res.unwrap();
+    let found = find_res?;
     if found {
         return Ok(());
     }
 
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Installing globalsign r45 certificate".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = "https://secure.globalsign.com/cacert/codesigningrootr45.crt";
     let res = REQUEST_CLIENT.get(url).send().await;
     if res.is_err() {
@@ -381,7 +473,12 @@ pub async fn is_hutao_running() -> Result<(bool, Option<u32>), String> {
 
 #[tauri::command]
 pub async fn kill_process(pid: u32) -> Result<(), String> {
-    // use the windows crate
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some(format!("Killing process {}", pid)),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let handle = unsafe {
         windows::Win32::System::Threading::OpenProcess(
             windows::Win32::System::Threading::PROCESS_TERMINATE,
@@ -389,13 +486,13 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
             pid,
         )
     };
-    if let Err(e) = handle {
-        return Err(format!("Failed to open process: {:?}", e));
+    if handle.is_err_and_capture("Failed to open process") {
+        return Err(format!("Failed to open process: {:?}", handle.err()));
     }
     let handle = handle.unwrap();
     let ret = unsafe { windows::Win32::System::Threading::TerminateProcess(handle, 1) };
-    if let Err(e) = ret {
-        return Err(format!("Failed to terminate process: {:?}", e));
+    if ret.is_err_and_capture("Failed to terminate process") {
+        return Err(format!("Failed to terminate process: {:?}", ret.err()));
     }
     Ok(())
 }
@@ -406,6 +503,12 @@ pub async fn install_package(
     id: String,
     window: WebviewWindow,
 ) -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Installing package".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
     let hash = run_sha256_file_hash_async(installer_path.to_str().unwrap()).await;
@@ -413,7 +516,7 @@ pub async fn install_package(
         return Err(format!("Failed to hash installer: {:?}", hash.err()));
     }
 
-    let hash = hash.unwrap();
+    let hash = hash?;
     if hash != sha256 {
         return Err("Installer hash mismatch".to_string());
     }
@@ -423,8 +526,7 @@ pub async fn install_package(
         move |opr| {
             let _ = window.emit(&id, opr);
         },
-    )
-    .await;
+    );
     if install_res.is_err() {
         return Err(format!(
             "Failed to install package: {:?}",
@@ -438,30 +540,58 @@ pub async fn install_package(
 
 #[tauri::command]
 pub async fn create_desktop_lnk() -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Creating desktop lnk".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
-    let desktop = get_desktop().unwrap();
+    let desktop = get_desktop()?;
     let lnk = format!(r#"{}\Snap Hutao.lnk"#, desktop);
 
     let desktop_path = Path::new(&desktop);
 
-    tokio::fs::create_dir_all(desktop_path)
-        .await
-        .map_err(|e| format!("Failed to create lnk dir: {:?}", e))?;
+    let create_dir_res = tokio::fs::create_dir_all(desktop_path).await;
+    if create_dir_res.is_err_and_capture("Failed to create lnk dir") {
+        return Err(format!(
+            "Failed to create lnk dir: {:?}",
+            create_dir_res.err()
+        ));
+    }
 
-    let sl = CoCreateInstance::<IShellLink>(&CLSID::ShellLink, None, CLSCTX::INPROC_SERVER)
-        .map_err(|e| format!("Failed to create shell link: {:?}", e))?;
+    let sl = CoCreateInstance::<IShellLink>(&CLSID::ShellLink, None, CLSCTX::INPROC_SERVER);
+    if sl.is_err_and_capture("Failed to create shell link") {
+        return Err(format!("Failed to create shell link: {:?}", sl.err()));
+    }
+    let sl = sl.unwrap();
 
-    sl.SetPath(&target)
-        .map_err(|e| format!("Failed to set shell link path: {:?}", e))?;
-    sl.SetShowCmd(SW::SHOWNORMAL)
-        .map_err(|e| format!("Failed to set shell link show cmd: {:?}", e))?;
+    let set_path_res = sl.SetPath(&target);
+    if set_path_res.is_err_and_capture("Failed to set shell link path") {
+        return Err(format!(
+            "Failed to set shell link path: {:?}",
+            set_path_res.err()
+        ));
+    }
 
-    let pf = sl
-        .QueryInterface::<IPersistFile>()
-        .map_err(|e| format!("Failed to query persist file: {:?}", e))?;
+    let set_show_cmd_res = sl.SetShowCmd(SW::SHOWNORMAL);
+    if set_show_cmd_res.is_err_and_capture("Failed to set shell link show cmd") {
+        return Err(format!(
+            "Failed to set shell link show cmd: {:?}",
+            set_show_cmd_res.err()
+        ));
+    }
 
-    pf.Save(Some(&lnk), false)
-        .map_err(|e| format!("Failed to save lnk: {:?}", e))?;
+    let pf = sl.QueryInterface::<IPersistFile>();
+    if pf.is_err_and_capture("Failed to query persist file") {
+        return Err(format!("Failed to query persist file: {:?}", pf.err()));
+    }
+    let pf = pf.unwrap();
+
+    let save_res = pf.Save(Some(&lnk), false);
+    if save_res.is_err_and_capture("Failed to save lnk") {
+        return Err(format!("Failed to save lnk: {:?}", save_res.err()));
+    }
 
     Ok(())
 }
@@ -474,6 +604,6 @@ pub async fn exit(app: AppHandle) {
 #[tauri::command]
 pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
-    let _ = run_elevated(target, "").map_err(|e| format!("Failed to launch: {:?}", e));
+    let _ = run_elevated(target, "");
     app.exit(0);
 }

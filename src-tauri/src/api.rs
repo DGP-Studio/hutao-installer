@@ -99,6 +99,12 @@ pub struct GenericPatchResp {
 }
 
 pub async fn generic_get_ip_info() -> Result<GenericIp, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Fetching ip info".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = "https://api.snapgenshin.com/ip";
     let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
@@ -118,6 +124,12 @@ pub async fn generic_get_ip_info() -> Result<GenericIp, String> {
 
 #[tauri::command]
 pub async fn generic_is_oversea() -> Result<bool, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Checking if oversea".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let data = generic_get_ip_info().await;
     if data.is_err() {
         return Err(format!("Failed to fetch ip info: {:?}", data.err()));
@@ -128,6 +140,12 @@ pub async fn generic_is_oversea() -> Result<bool, String> {
 
 #[tauri::command]
 pub async fn generic_get_patch() -> Result<GenericPatchData, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Fetching patch".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = "https://api.snapgenshin.com/patch/hutao";
     let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
@@ -147,6 +165,12 @@ pub async fn generic_get_patch() -> Result<GenericPatchData, String> {
 
 #[tauri::command]
 pub async fn homa_login(login_req: HomaPassportLoginReq) -> Result<HomaPassportLoginResp, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Logging in homa".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = "https://homa.snapgenshin.com/Passport/Login";
     let resp = REQUEST_CLIENT.post(url).json(&login_req).send().await;
     if resp.is_err() {
@@ -162,6 +186,12 @@ pub async fn homa_login(login_req: HomaPassportLoginReq) -> Result<HomaPassportL
 
 #[tauri::command]
 pub async fn homa_fetch_userinfo(token: String) -> Result<HomaPassportUserInfo, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Fetching userinfo from homa".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = "https://homa.snapgenshin.com/Passport/UserInfo";
     let resp = REQUEST_CLIENT
         .get(url)
@@ -185,6 +215,12 @@ pub async fn homa_fetch_userinfo(token: String) -> Result<HomaPassportUserInfo, 
 
 #[tauri::command]
 pub async fn homa_fetch_cdn(token: String, filename: String) -> Result<String, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Fetching cdn from homa".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
     let url = format!(
         "https://homa.snapgenshin.com/Distribution/GetAcceleratedMirror?Filename={}",
         filename

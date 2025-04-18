@@ -1,5 +1,6 @@
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
+use crate::utils::SentryCapturable;
 use crate::REQUEST_CLIENT;
 
 pub async fn create_http_stream(
@@ -30,7 +31,7 @@ pub async fn create_http_stream(
 
 pub async fn create_target_file(target: &str) -> Result<impl AsyncWrite, String> {
     let target_file = tokio::fs::File::create(target).await;
-    if target_file.is_err() {
+    if target_file.is_err_and_capture("Failed to create target file") {
         return Err(format!(
             "Failed to create target file: {:?}",
             target_file.err()

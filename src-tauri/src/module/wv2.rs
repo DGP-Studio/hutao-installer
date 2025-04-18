@@ -81,6 +81,12 @@ pub async fn install_webview2(command: String) {
         match msg {
             TDN_CREATED => {
                 (*conf).replace(hwnd);
+                sentry::add_breadcrumb(sentry::Breadcrumb {
+                    category: Some("wv2_installer".to_string()),
+                    message: Some("Task dialog created".to_string()),
+                    level: sentry::Level::Info,
+                    ..Default::default()
+                });
                 SendMessageW(
                     hwnd,
                     TDM_SET_PROGRESS_BAR_MARQUEE.0 as u32,
@@ -135,6 +141,12 @@ pub async fn install_webview2(command: String) {
     let webview_installer_running_info =
         is_process_running("MicrosoftEdgeWebview2Setup.exe".to_string(), None).unwrap_or_default();
     if !webview_installer_running_info.0 {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("wv2_installer".to_string()),
+            message: Some("WebView2 installer is not running, start downloading".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
         // use reqwest to download the installer
         let res = REQUEST_CLIENT
             .get("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
@@ -197,8 +209,20 @@ pub async fn install_webview2(command: String) {
     }
 
     let id = if webview_installer_running_info.0 {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("wv2_installer".to_string()),
+            message: Some("WebView2 installer is already running, wait for it".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
         webview_installer_running_info.1.unwrap()
     } else {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("wv2_installer".to_string()),
+            message: Some("WebView2 installer is not running, start installing".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
         tokio::process::Command::new(installer_path.clone())
             .arg("/install")
             .spawn()
@@ -221,6 +245,12 @@ pub async fn install_webview2(command: String) {
 
     let _ = tokio::fs::remove_file(installer_path).await;
     if status.success() {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("wv2_installer".to_string()),
+            message: Some("WebView2 installer finished successfully".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
         // close the dialog
         let hwnd = dialog_hwnd.take();
         unsafe {
@@ -231,6 +261,12 @@ pub async fn install_webview2(command: String) {
             .spawn();
         exit_and_release_mutex(0, &singleton_state);
     } else {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("wv2_installer".to_string()),
+            message: Some(format!("WebView2 installer failed: {:?}", status.code()).to_string()),
+            level: sentry::Level::Error,
+            ..Default::default()
+        });
         let hwnd = dialog_hwnd.take();
         unsafe {
             SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));

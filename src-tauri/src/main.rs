@@ -8,6 +8,7 @@ pub mod installer;
 pub mod module;
 pub mod utils;
 
+use crate::utils::SentryCapturable;
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
 use module::singleton;
@@ -73,11 +74,19 @@ fn main() {
             release: sentry::release_name!(),
             debug: cfg!(debug_assertions),
             auto_session_tracking: true,
+            max_breadcrumbs: 1000,
             sample_rate: 1.0,
             traces_sample_rate: 1.0,
             ..Default::default()
         },
     ));
+
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("app".into()),
+        message: Some("HutaoInstaller started".into()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
 
     let cli = cli::Cli::parse();
     let command = cli.command();
@@ -87,6 +96,12 @@ fn main() {
 
     let wv2ver = tauri::webview_version();
     if wv2ver.is_err() {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("webview2".into()),
+            message: Some("WebView2 not installed".into()),
+            level: sentry::Level::Warning,
+            ..Default::default()
+        });
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -118,7 +133,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     let (major, minor, build, revision) = get_windows_version();
 
     let is_lower_than_win10_22h2 = major < 10 && build < 19045 && revision < 5371;
-    let is_lower_than_win11_22h2 = major < 10 && build > 22000 && build < 22621;
+    let is_lower_than_win11_22h2 = major < 10 && build >= 22000 && build < 22621;
     if is_lower_than_win10_22h2 || is_lower_than_win11_22h2 {
         rfd::MessageDialog::new()
             .set_title("错误")
@@ -134,7 +149,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     // set cwd to temp dir
     let temp_dir = std::env::temp_dir();
     let res = std::env::set_current_dir(&temp_dir);
-    if res.is_err() {
+    if res.is_err_and_capture("Failed to set current dir to temp dir") {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("无法访问临时文件夹")
@@ -192,6 +207,14 @@ async fn tauri_main(args: Option<UpdateArgs>) {
                 main_window = main_window.data_directory(temp_dir_for_data).visible(false);
             }
             let main_window = main_window.build().unwrap();
+            sentry::add_breadcrumb(
+                sentry::Breadcrumb {
+                    category: Some("app".into()),
+                    message: Some("Main window created".into()),
+                    level: sentry::Level::Info,
+                    ..Default::default()
+                },
+            );
             #[cfg(debug_assertions)]
             {
                 let window = tauri::Manager::get_webview_window(app, "main");

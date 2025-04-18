@@ -1,4 +1,5 @@
 use std::{ffi::OsStr, mem::size_of};
+use windows::Win32::Foundation::GetLastError;
 use windows::{
     core::{w, HSTRING, PCWSTR},
     Win32::{
@@ -33,6 +34,10 @@ pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(
         ShellExecuteExW(&mut sei)?;
         let process = { sei.hProcess };
         if process.is_invalid() {
+            sentry::capture_message(
+                format!("Failed to run elevated: {:?}", GetLastError()).as_str(),
+                sentry::Level::Error,
+            );
             return Err(std::io::Error::last_os_error());
         };
         Ok(SendableHandle(process))

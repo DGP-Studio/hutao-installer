@@ -1,4 +1,5 @@
 use crate::utils::hash::run_md5_hash;
+use crate::utils::SentryCapturable;
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 pub fn get_device_id() -> Result<String, String> {
@@ -6,7 +7,7 @@ pub fn get_device_id() -> Result<String, String> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Microsoft\Cryptography"#;
     let key = hklm.open_subkey(path);
-    if key.is_err() {
+    if key.is_err_and_capture("Failed to open registry key") {
         return Err(format!("Failed to open registry key: {:?}", key.err()));
     }
 

@@ -1,3 +1,4 @@
+use crate::utils::SentryCapturable;
 use std::str::FromStr;
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
@@ -5,7 +6,7 @@ pub fn get_windows_version() -> (u32, u32, u32, u32) {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Microsoft\Windows NT\CurrentVersion"#;
     let key = hklm.open_subkey(path);
-    if key.is_err() {
+    if key.is_err_and_capture("Failed to open registry key") {
         return (0, 0, 0, 0);
     }
 

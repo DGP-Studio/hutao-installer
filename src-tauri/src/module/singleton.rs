@@ -65,6 +65,13 @@ pub fn init<R: Runtime>(userdata: UserData<R>) -> (bool, SingletonState) {
             let hwnd = FindWindowW(PCWSTR(clz_name.as_ptr()), PCWSTR(wnd_name.as_ptr()));
             if let Ok(hwnd) = hwnd {
                 if !hwnd.is_invalid() {
+                    sentry::add_breadcrumb(sentry::Breadcrumb {
+                        category: Some("singleton".into()),
+                        message: Some("Another instance is running".into()),
+                        level: sentry::Level::Warning,
+                        ..Default::default()
+                    });
+
                     let data = COPYDATASTRUCT {
                         dwData: WMCOPYDATA_SINGLE_INSTANCE_DATA,
                         cbData: 0,
@@ -81,8 +88,20 @@ pub fn init<R: Runtime>(userdata: UserData<R>) -> (bool, SingletonState) {
                 }
             }
 
+            sentry::add_breadcrumb(sentry::Breadcrumb {
+                category: Some("singleton".into()),
+                message: Some("Mutex found, but window not found".into()),
+                level: sentry::Level::Warning,
+                ..Default::default()
+            });
             (true, SingletonState::default())
         } else {
+            sentry::add_breadcrumb(sentry::Breadcrumb {
+                category: Some("singleton".into()),
+                message: Some("Mutex created".into()),
+                level: sentry::Level::Info,
+                ..Default::default()
+            });
             let userdata = Box::into_raw(Box::new(userdata));
             let hwnd = create_event_target_window(&clz_name, &wnd_name, userdata);
             (
@@ -104,9 +123,21 @@ pub fn init_as_plugin<R: Runtime>() -> TauriPlugin<R> {
                 hwnd: std::ptr::null_mut(),
             });
             if !res {
+                sentry::add_breadcrumb(sentry::Breadcrumb {
+                    category: Some("singleton_as_plugin".into()),
+                    message: Some("Another instance is running".into()),
+                    level: sentry::Level::Warning,
+                    ..Default::default()
+                });
                 app.cleanup_before_exit();
                 std::process::exit(0);
             } else {
+                sentry::add_breadcrumb(sentry::Breadcrumb {
+                    category: Some("singleton_as_plugin".into()),
+                    message: Some("Singleton instance created".into()),
+                    level: sentry::Level::Info,
+                    ..Default::default()
+                });
                 app.manage(state);
             }
 
@@ -114,6 +145,12 @@ pub fn init_as_plugin<R: Runtime>() -> TauriPlugin<R> {
         })
         .on_event(|app, event| {
             if let RunEvent::Exit = event {
+                sentry::add_breadcrumb(sentry::Breadcrumb {
+                    category: Some("singleton_as_plugin".into()),
+                    message: Some("Singleton instance destroy invoked".into()),
+                    level: sentry::Level::Info,
+                    ..Default::default()
+                });
                 destroy_plugin(app);
             }
         })
@@ -132,6 +169,12 @@ pub fn destroy(state: &SingletonState) {
             let _ = DestroyWindow(HWND(hwnd as _));
         }
     }
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("singleton".into()),
+        message: Some("Singleton instance destroyed".into()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
 }
 
 pub fn destroy_plugin<R: Runtime, M: Manager<R>>(manager: &M) {
@@ -151,6 +194,12 @@ unsafe extern "system" fn singleton_window_proc<R: Runtime>(
             let create_struct = &*(lparam.0 as *const CREATESTRUCTW);
             let userdata = create_struct.lpCreateParams as *const UserData<R>;
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, userdata as _);
+            sentry::add_breadcrumb(sentry::Breadcrumb {
+                category: Some("singleton".into()),
+                message: Some("Singleton window created".into()),
+                level: sentry::Level::Info,
+                ..Default::default()
+            });
             LRESULT(0)
         }
 
@@ -163,9 +212,21 @@ unsafe extern "system" fn singleton_window_proc<R: Runtime>(
                     if let Some(window) = window {
                         let hwnd = window.hwnd().unwrap();
                         switch_to(HWND(hwnd.0 as _));
+                        sentry::add_breadcrumb(sentry::Breadcrumb {
+                            category: Some("singleton".into()),
+                            message: Some("Switch to webview window".into()),
+                            level: sentry::Level::Info,
+                            ..Default::default()
+                        });
                     }
                 } else if let Some(hwnd) = *userdata.hwnd {
                     switch_to(HWND(hwnd.0 as _));
+                    sentry::add_breadcrumb(sentry::Breadcrumb {
+                        category: Some("singleton".into()),
+                        message: Some("Switch to wv2 install window".into()),
+                        level: sentry::Level::Info,
+                        ..Default::default()
+                    });
                 }
             }
             LRESULT(1)
