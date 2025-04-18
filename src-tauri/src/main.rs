@@ -67,6 +67,9 @@ fn main() {
     use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
     let _ = unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
 
+    std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_LIB_BACKTRACE", "1");
+
     let _guard = sentry::init((
         "https://59ff148bff0f509baf01516d1f075d11@sentry.snapgenshin.com/10",
         sentry::ClientOptions {
@@ -131,8 +134,8 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
     let (major, minor, build, revision) = get_windows_version();
 
-    let is_lower_than_win10_22h2 = major < 10 && build < 19045 && revision < 5371;
-    let is_lower_than_win11_22h2 = major < 10 && (22000..22621).contains(&build);
+    let is_lower_than_win10_22h2 = major <= 10 && build <= 19045 && revision < 5371;
+    let is_lower_than_win11_22h2 = major <= 10 && (22000..22621).contains(&build);
     if is_lower_than_win10_22h2 || is_lower_than_win11_22h2 {
         rfd::MessageDialog::new()
             .set_title("错误")

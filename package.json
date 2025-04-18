@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "cross-env STATIC_VCRUNTIME=false RUST_BACKTRACE=1 RUST_LIB_BACKTRACE=1 tauri dev --exit-on-panic",
-    "build": "cross-env STATIC_VCRUNTIME=false RUST_BACKTRACE=1 RUST_LIB_BACKTRACE=1 tauri build",
+    "dev": "cross-env RUST_BACKTRACE=1 RUST_LIB_BACKTRACE=1 tauri dev --exit-on-panic",
+    "build": "cross-env STATIC_VCRUNTIME=false tauri build",
     "debug": "tauri build --debug && pnpm dev",
     "preview": "rsbuild preview",
     "tauri": "tauri"
