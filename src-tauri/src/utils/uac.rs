@@ -2,21 +2,14 @@ use std::{ffi::OsStr, mem::size_of};
 use windows::{
     core::{w, HSTRING, PCWSTR},
     Win32::{
-        Foundation::HANDLE,
+        Foundation::CloseHandle,
         UI::Shell::{
             ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
         },
     },
 };
 
-pub struct SendableHandle(pub HANDLE);
-unsafe impl Send for SendableHandle {}
-unsafe impl Sync for SendableHandle {}
-
-pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(
-    program_path: S,
-    args: T,
-) -> std::io::Result<SendableHandle> {
+pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(program_path: S, args: T) {
     let file = HSTRING::from(program_path.as_ref());
     let par = HSTRING::from(args.as_ref());
 
@@ -30,12 +23,8 @@ pub fn run_elevated<S: AsRef<OsStr>, T: AsRef<OsStr>>(
         ..Default::default()
     };
     unsafe {
-        ShellExecuteExW(&mut sei)?;
-        let process = { sei.hProcess };
-        if process.is_invalid() {
-            sentry_anyhow::capture_anyhow(&anyhow::Error::from(windows::core::Error::from_win32()));
-            return Err(std::io::Error::last_os_error());
-        };
-        Ok(SendableHandle(process))
+        let _ = ShellExecuteExW(&mut sei);
+        let process = sei.hProcess;
+        let _ = CloseHandle(process);
     }
 }

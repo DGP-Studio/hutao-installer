@@ -1,3 +1,4 @@
+use crate::utils::process::wait_for_pid;
 use crate::utils::Version;
 use crate::{
     cli::arg::UpdateArgs,
@@ -16,6 +17,7 @@ use crate::{
 use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
+use windows::core::HRESULT;
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 use winsafe::{
     co::{CLSCTX, CLSID, SW},
@@ -157,7 +159,7 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
             write_res.err()
         ));
     }
-    let _ = run_elevated(&exe_path, "");
+    run_elevated(&exe_path, "");
     app.exit(0);
 
     Ok(())
@@ -360,44 +362,75 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
         level: sentry::Level::Info,
         ..Default::default()
     });
-    let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
-    let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join("vc_redist.x64.exe");
-    let stream_res = create_http_stream(url, 0, 0).await;
-    if stream_res.is_err() {
-        return Err(format!(
-            "Failed to download vcrt installer: {:?}",
-            stream_res.err()
-        ));
-    }
-    let (mut stream, len) = stream_res?;
-    let target_file_create_res =
-        create_target_file(installer_path.as_os_str().to_str().unwrap()).await;
-    if target_file_create_res.is_err() {
-        return Err(format!(
-            "Failed to create vcrt installer: {:?}",
-            target_file_create_res.err()
-        ));
-    }
-    let mut target = target_file_create_res?;
-    let progress_noti = move |downloaded: usize| {
-        let _ = window.emit(&id, serde_json::json!((downloaded, len)));
-    };
-    progressed_copy(&mut stream, &mut target, progress_noti).await?;
-    // close streams
-    drop(stream);
-    drop(target);
 
-    let cmd = tokio::process::Command::new(&installer_path)
-        .arg("/install")
-        .arg("/quiet")
-        .arg("/norestart")
-        .spawn();
-    if cmd.is_err_and_capture("Failed to spawn vcrt installer") {
-        return Err(format!("Failed to spawn vcrt installer: {:?}", cmd.err()));
+    const VCRT_INSTALLER_NAME: &str = "vc_redist.x64.exe";
+
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.as_path().join(VCRT_INSTALLER_NAME);
+
+    let installer_running_status =
+        is_process_running(VCRT_INSTALLER_NAME.to_string(), None).unwrap_or_default();
+    if !installer_running_status.0 {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("installer".to_string()),
+            message: Some("Downloading vcrt".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
+        let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+        let stream_res = create_http_stream(url, 0, 0).await;
+        if stream_res.is_err() {
+            return Err(format!(
+                "Failed to download vcrt installer: {:?}",
+                stream_res.err()
+            ));
+        }
+        let (mut stream, len) = stream_res?;
+        let target_file_create_res =
+            create_target_file(installer_path.as_os_str().to_str().unwrap()).await;
+        if target_file_create_res.is_err() {
+            return Err(format!(
+                "Failed to create vcrt installer: {:?}",
+                target_file_create_res.err()
+            ));
+        }
+        let mut target = target_file_create_res?;
+        let progress_noti = move |downloaded: usize| {
+            let _ = window.emit(&id, serde_json::json!((downloaded, len)));
+        };
+        progressed_copy(&mut stream, &mut target, progress_noti).await?;
+        // close streams
+        drop(stream);
+        drop(target);
     }
-    let mut cmd = cmd.unwrap();
-    let status = cmd.wait().await;
+
+    let id = if installer_running_status.0 {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("installer".to_string()),
+            message: Some("VCRT installer running, wait for it".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
+        installer_running_status.1.unwrap()
+    } else {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("installer".to_string()),
+            message: Some("Spawning vcrt installer".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
+        let cmd = tokio::process::Command::new(&installer_path)
+            .arg("/install")
+            .arg("/quiet")
+            .arg("/norestart")
+            .spawn();
+        if cmd.is_err_and_capture("Failed to spawn vcrt installer") {
+            return Err(format!("Failed to spawn vcrt installer: {:?}", cmd.err()));
+        }
+        cmd.unwrap().id().unwrap()
+    };
+
+    let status = wait_for_pid(id);
     if status.is_err_and_capture("Failed to wait for vcrt installer") {
         return Err(format!(
             "Failed to wait for vcrt installer: {:?}",
@@ -529,10 +562,14 @@ pub async fn install_package(
         },
     );
     if install_res.is_err_and_capture("Failed to install package") {
-        return Err(format!(
-            "Failed to install package: {:?}",
-            install_res.err()
-        ));
+        let err = install_res.err();
+        if let Some(e) = err.clone() {
+            if e.code() == HRESULT(0x80070570u32 as i32) {
+                let _ = tokio::fs::remove_file(installer_path).await;
+            }
+        }
+
+        return Err(format!("Failed to install package: {:?}", err));
     }
 
     let _ = tokio::fs::remove_file(installer_path).await;
@@ -605,6 +642,6 @@ pub async fn exit(app: AppHandle) {
 #[tauri::command]
 pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
-    let _ = run_elevated(target, "");
+    run_elevated(target, "");
     app.exit(0);
 }
