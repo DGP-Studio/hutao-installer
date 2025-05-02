@@ -1,6 +1,6 @@
 [package]
 name = "hutao-installer"
-version = "2.2.8"
+version = "2.3.0"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
