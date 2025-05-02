@@ -49,7 +49,7 @@ jobs:
           echo "EMBEDDED_VERSION=$version" >> $env:GITHUB_ENV
           iwr -Uri $patch.data.urls[0] -OutFile "./src-tauri/Snap.Hutao.msix"
       - name: Build
-        run: pnpm build
+        run: pnpm build-${{ env.BUILD_MODE }}
       - name: Upload PDB to Sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

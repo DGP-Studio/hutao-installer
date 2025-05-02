@@ -7,6 +7,7 @@
     "dev": "cross-env RUST_BACKTRACE=1 RUST_LIB_BACKTRACE=1 tauri dev --exit-on-panic",
     "dev-offline": "cross-env RUST_BACKTRACE=1 RUST_LIB_BACKTRACE=1 BUILD_MODE=offline EMBEDDED_VERSION=1.14.4.0 tauri dev --exit-on-panic --features offline",
     "build": "cross-env STATIC_VCRUNTIME=false tauri build",
+    "build-online": "cross-env STATIC_VCRUNTIME=false tauri build",
     "build-offline": "cross-env STATIC_VCRUNTIME=false tauri build --features offline",
     "debug": "tauri build --debug && pnpm dev",
     "preview": "rsbuild preview",
