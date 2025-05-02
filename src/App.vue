@@ -538,7 +538,7 @@ let embedded_is_latest = false;
 const CONFIG: Config = reactive({
   version: '0.0.0',
   is_update: false,
-  is_auto_update: false,
+  skip_self_update: false,
   is_offline_mode: false,
   embedded_version: null,
   curr_version: null,
@@ -888,7 +888,7 @@ onMounted(async () => {
   mirrors.value = patch_data.mirrors;
   sha256.value = patch_data.sha256;
 
-  if (!config.is_auto_update) {
+  if (!config.skip_self_update) {
     if (await invoke<boolean>('need_self_update')) {
       while (true) {
         selfUpdating.value = true;

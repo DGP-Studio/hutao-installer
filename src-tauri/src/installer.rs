@@ -36,7 +36,7 @@ const OFFLINE_PACKAGE_PAYLOAD: &[u8] = &[];
 pub struct Config {
     pub version: String,
     pub is_update: bool,
-    pub is_auto_update: bool,
+    pub skip_self_update: bool,
     pub is_offline_mode: bool,
     pub embedded_version: Option<String>,
     pub curr_version: Option<String>,
@@ -219,8 +219,8 @@ pub async fn get_config<R: Runtime>(
         return Ok(Config {
             version: curr_ver.to_string(),
             is_update: true,
-            is_auto_update: true,
-            is_offline_mode: offline,
+            skip_self_update: true,
+            is_offline_mode: false,
             embedded_version,
             curr_version: exists,
             token: update_args.token,
@@ -230,7 +230,7 @@ pub async fn get_config<R: Runtime>(
     Ok(Config {
         version: curr_ver.to_string(),
         is_update: exists.is_some(),
-        is_auto_update: false,
+        skip_self_update: offline,
         is_offline_mode: offline,
         embedded_version,
         curr_version: exists,
