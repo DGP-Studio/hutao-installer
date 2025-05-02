@@ -32,8 +32,11 @@ type GenericPatchPackageMirror = {
 };
 
 interface Config {
+  version: string;
   is_update: boolean;
   is_auto_update: boolean;
+  is_offline_mode: boolean;
+  embedded_version: string | null;
   curr_version: string | null;
   token: string | null;
 }

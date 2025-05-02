@@ -6,8 +6,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  build:
+  build-online:
     runs-on: windows-latest
+    env:
+      BUILD_MODE: online
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,16 +53,76 @@ jobs:
       - name: Artifact
         uses: actions/upload-artifact@v4.6.0
         with:
-          name: deployment
+          name: deployment-online
           path: Snap.Hutao.Deployment.exe
       - name: pdb
         uses: actions/upload-artifact@v4.6.0
         with:
-          name: pdb
+          name: pdb-online
+          path: src-tauri/target/release/hutao_installer.pdb
+  build-offline:
+    runs-on: windows-latest
+    env:
+      BUILD_MODE: offline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - run: rustup toolchain install stable --profile minimal
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: false
+          workspaces: 'src-tauri'
+      - uses: pnpm/action-setup@v4.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Install NPM Dependencies
+        run: pnpm i
+      - name: Update Meta
+        run: |
+          $tag = git describe --tags --abbrev=0 2>$null
+          if (-not $tag) { $tag = "0.0.0" }
+          $TAG = $tag -replace '^v', ''
+          $PKGVER = "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)"
+          $cstTimeZone = [System.TimeZoneInfo]::FindSystemTimeZoneById("China Standard Time")
+          $utcNow = [System.DateTime]::UtcNow
+          $cstTime = [System.TimeZoneInfo]::ConvertTimeFromUtc($utcNow, $cstTimeZone)
+          $BUILDMETA = $cstTime.ToString("yyMMddHHmm")
+          (Get-Content ./src-tauri/Cargo.toml -Raw) -replace '(?m)^(version = "\d+\.\d+\.\d+)', "version = `"$TAG-$PKGVER+$BUILDMETA" | Set-Content ./src-tauri/Cargo.toml -Encoding utf8
+      - name: Prepare offline package and info
+        run: |
+          $patch = irm "https://api.snapgenshin.com/patch/hutao"
+          $version = $patch.data.version
+          echo "EMBEDDED_VERSION=$version" >> $env:GITHUB_ENV
+          iwr -Uri $patch.data.urls[0] -OutFile "./src-tauri/Snap.Hutao.msix"
+      - name: Build
+        run: pnpm build
+      - name: Upload PDB to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: installer
+          SENTRY_LOG_LEVEL: debug
+        run: |
+          pnpm add @sentry/cli
+          ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao_installer.pdb
+      - name: Copy Binary
+        run: copy src-tauri/target/release/hutao-installer.exe Snap.Hutao.Deployment.exe
+      - name: Artifact
+        uses: actions/upload-artifact@v4.6.0
+        with:
+          name: deployment-offline
+          path: Snap.Hutao.Deployment.exe
+      - name: pdb
+        uses: actions/upload-artifact@v4.6.0
+        with:
+          name: pdb-offline
           path: src-tauri/target/release/hutao_installer.pdb
   sync:
     runs-on: windows-latest
-    needs: build
+    needs: build-online
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +133,7 @@ jobs:
           fetch-tags: true
       - uses: actions/download-artifact@v4
         with:
-          name: deployment
+          name: deployment-online
           path: src/Snap.Hutao.Deployment.Runtime
       - name: Update nuspec
         run: |

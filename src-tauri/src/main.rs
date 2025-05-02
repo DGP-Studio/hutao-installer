@@ -31,6 +31,7 @@ lazy_static::lazy_static! {
 }
 
 fn ua_string() -> String {
+    let pkg_name = format!("HutaoInstaller-{}", env!("BUILD_MODE"));
     let winver = get_windows_version();
     let cpu_cores = num_cpus::get();
     let wv2ver = tauri::webview_version();
@@ -40,7 +41,8 @@ fn ua_string() -> String {
         "Unknown".to_string()
     };
     format!(
-        "HutaoInstaller/{} Webview2/{} Windows/{}.{}.{} Threads/{}",
+        "{}/{} Webview2/{} Windows/{}.{}.{} Threads/{}",
+        pkg_name,
         env!("CARGO_PKG_VERSION"),
         wv2ver,
         winver.major,
@@ -183,6 +185,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::speedtest_5mb,
             installer::check_temp_package_valid,
             installer::head_package,
+            installer::extract_package,
             installer::download_package,
             installer::check_vcrt,
             installer::install_vcrt,
@@ -273,6 +276,7 @@ async fn configure_sentry_scope(command: String) {
                 ("Name".to_string(), "HutaoInstaller".into()),
                 ("Version".to_string(), env!("CARGO_PKG_VERSION").into()),
                 ("Command".to_string(), command.into()),
+                ("Mode".to_string(), env!("BUILD_MODE").into()),
             ])),
         );
 

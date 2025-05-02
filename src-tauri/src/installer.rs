@@ -17,6 +17,7 @@ use crate::{
 use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
+use tokio::io::AsyncWriteExt;
 use windows::core::HRESULT;
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 use winsafe::{
@@ -25,10 +26,19 @@ use winsafe::{
     CoCreateInstance, IPersistFile, IShellLink,
 };
 
+#[cfg(feature = "offline")]
+const OFFLINE_PACKAGE_PAYLOAD: &[u8] = include_bytes!("../Snap.Hutao.msix");
+
+#[cfg(not(feature = "offline"))]
+const OFFLINE_PACKAGE_PAYLOAD: &[u8] = &[];
+
 #[derive(Serialize, Debug, Clone)]
 pub struct Config {
+    pub version: String,
     pub is_update: bool,
     pub is_auto_update: bool,
+    pub is_offline_mode: bool,
+    pub embedded_version: Option<String>,
     pub curr_version: Option<String>,
     pub token: Option<String>,
 }
@@ -181,29 +191,48 @@ pub async fn open_browser(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_config(args: State<'_, Option<UpdateArgs>>) -> Result<Config, String> {
+pub async fn get_config<R: Runtime>(
+    args: State<'_, Option<UpdateArgs>>,
+    app: AppHandle<R>,
+) -> Result<Config, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
         message: Some("Getting config".to_string()),
         level: sentry::Level::Info,
         ..Default::default()
     });
+
+    let curr_ver = app.package_info().version.clone();
+    let curr_ver = Version::new(curr_ver.major, curr_ver.minor, curr_ver.patch, 0);
+    let offline = env!("BUILD_MODE") == "offline";
+    let embedded_version = if offline {
+        Some(Version::from_string(env!("EMBEDDED_VERSION"))?.to_string())
+    } else {
+        None
+    };
+
     let exists = try_get_hutao_version().unwrap();
 
     let update_args = args.inner().clone();
     if update_args.is_some() {
         let update_args = update_args.unwrap();
         return Ok(Config {
+            version: curr_ver.to_string(),
             is_update: true,
             is_auto_update: true,
+            is_offline_mode: offline,
+            embedded_version,
             curr_version: exists,
             token: update_args.token,
         });
     }
 
     Ok(Config {
+        version: curr_ver.to_string(),
         is_update: exists.is_some(),
         is_auto_update: false,
+        is_offline_mode: offline,
+        embedded_version,
         curr_version: exists,
         token: None,
     })
@@ -295,6 +324,29 @@ pub async fn head_package(mirror_url: String) -> Result<u64, String> {
     }
 
     Ok(len.unwrap())
+}
+
+#[tauri::command]
+pub async fn extract_package() -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Extracting package".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let file = tokio::fs::File::create(installer_path).await;
+    if file.is_err() {
+        return Err(format!("Failed to create msix: {:?}", file.err()));
+    }
+
+    let mut file = file.unwrap();
+    let write_res = file.write_all(OFFLINE_PACKAGE_PAYLOAD).await;
+    if write_res.is_err_and_capture("Failed to write msix") {
+        return Err(format!("Failed to write msix: {:?}", write_res.err()));
+    }
+    Ok(())
 }
 
 #[tauri::command]

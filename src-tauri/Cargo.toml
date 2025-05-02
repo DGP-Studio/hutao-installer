@@ -5,6 +5,10 @@ description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
 
+[features]
+default = []
+offline = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

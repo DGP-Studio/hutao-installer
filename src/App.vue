@@ -136,12 +136,24 @@
         </div>
       </div>
     </div>
+    <div v-show="init" class="version">{{ CONFIG.version
+      }}{{ CONFIG.embedded_version ? `/${CONFIG.embedded_version}` : '' }}
+    </div>
   </div>
 </template>
 
 <style scoped>
 .main {
   min-height: 100vh;
+}
+
+.version {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  opacity: 0.8;
+  font-size: 12px;
+  pointer-events: none;
 }
 
 .init-loading {
@@ -489,7 +501,7 @@ const selfUpdateRetry = ref<boolean | null>(null);
 const selfUpdateError = ref<string | null>(null);
 
 const subStepList: ReadonlyArray<string> = [
-  t('下载安装包'),
+  t('准备安装包'),
   t('准备运行环境'),
   t('部署文件'),
 ];
@@ -522,9 +534,13 @@ const logging_in = ref<boolean>(false);
 const version_info = ref<string>('');
 const changelog = ref<string>('');
 
+let embedded_is_latest = false;
 const CONFIG: Config = reactive({
+  version: '0.0.0',
   is_update: false,
   is_auto_update: false,
+  is_offline_mode: false,
+  embedded_version: null,
   curr_version: null,
   token: null,
 });
@@ -536,6 +552,22 @@ async function openTos(): Promise<void> {
 }
 
 async function start(): Promise<void> {
+  if (CONFIG.is_offline_mode) {
+    if (embedded_is_latest) {
+      await install();
+      return;
+    }
+
+    if (await invoke<boolean>('confirm_dialog', {
+      'title': t('提示'),
+      'message': t('此离线安装包不是最新版本，是否继续安装？取消以在线安装最新版本'),
+    })) {
+      embedded_is_latest = true;
+      await install();
+      return;
+    }
+  }
+
   if (isOversea.value) {
     selectedMirror.value = mirrors.value[0];
     await install();
@@ -587,63 +619,77 @@ async function loginSkip(): Promise<void> {
 async function install(): Promise<void> {
   step.value = 4;
   percent.value = 0;
-  current.value = t('准备下载……');
-  const package_exists_and_valid = await invoke<boolean>('check_temp_package_valid', { 'sha256': sha256.value });
-  if (!package_exists_and_valid) {
-    let mirror_url;
+  if (embedded_is_latest) {
+    current.value = t('准备中……');
     try {
-      mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
+      await invoke('extract_package');
     } catch (e) {
       await invoke('error_dialog', {
         title: t('错误'),
-        message: t('未获取到可用的镜像源，请重试'),
+        message: t('提取安装包失败，请重试') + '\n\n' + e,
       });
       step.value = 1;
       return;
     }
-    let total_downloaded_size = 0;
-    const total_size = await invoke<number>('head_package', {
-      mirrorUrl: mirror_url,
-    });
-    let stat: InstallStat = {
-      speedLastSize: 0,
-      lastTime: performance.now(),
-      speed: 0,
-    };
-    progressInterval.value = setInterval(() => {
-      const now = performance.now();
-      const time_diff = now - stat.lastTime;
-      if (time_diff > 500) {
-        stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
-        stat.speedLastSize = total_downloaded_size;
-        stat.lastTime = now;
+  } else {
+    current.value = t('准备下载……');
+    const package_exists_and_valid = await invoke<boolean>('check_temp_package_valid', { 'sha256': sha256.value });
+    if (!package_exists_and_valid) {
+      let mirror_url;
+      try {
+        mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
+      } catch (e) {
+        await invoke('error_dialog', {
+          title: t('错误'),
+          message: t('未获取到可用的镜像源，请重试'),
+        });
+        step.value = 1;
+        return;
       }
-      const speed = formatSize(stat.speed * 1000);
-      const downloaded = formatSize(total_downloaded_size);
-      const total = formatSize(total_size);
-      current.value = `
-      <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
-    `;
-      percent.value = (total_downloaded_size / total_size) * 45;
-    }, 30);
-
-    let id = uuid();
-    let unlisten = await listen<[number, number]>(id, ({ payload }) => {
-      total_downloaded_size = payload[0];
-    });
-    try {
-      await invoke('download_package', { mirrorUrl: mirror_url, id: id });
-    } catch (e) {
-      await invoke('error_dialog', {
-        title: t('错误'),
-        message: t('下载安装包失败，请重试') + '\n\n' + e,
+      let total_downloaded_size = 0;
+      const total_size = await invoke<number>('head_package', {
+        mirrorUrl: mirror_url,
       });
-      step.value = 1;
-      return;
-    } finally {
-      unlisten();
+      let stat: InstallStat = {
+        speedLastSize: 0,
+        lastTime: performance.now(),
+        speed: 0,
+      };
+      progressInterval.value = setInterval(() => {
+        const now = performance.now();
+        const time_diff = now - stat.lastTime;
+        if (time_diff > 500) {
+          stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
+          stat.speedLastSize = total_downloaded_size;
+          stat.lastTime = now;
+        }
+        const speed = formatSize(stat.speed * 1000);
+        const downloaded = formatSize(total_downloaded_size);
+        const total = formatSize(total_size);
+        current.value = `
+        <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
+      `;
+        percent.value = (total_downloaded_size / total_size) * 45;
+      }, 30);
+
+      let id = uuid();
+      let unlisten = await listen<[number, number]>(id, ({ payload }) => {
+        total_downloaded_size = payload[0];
+      });
+      try {
+        await invoke('download_package', { mirrorUrl: mirror_url, id: id });
+      } catch (e) {
+        await invoke('error_dialog', {
+          title: t('错误'),
+          message: t('下载安装包失败，请重试') + '\n\n' + e,
+        });
+        step.value = 1;
+        return;
+      } finally {
+        unlisten();
+      }
+      clearInterval(progressInterval.value);
     }
-    clearInterval(progressInterval.value);
   }
   percent.value = 45;
   subStep.value = 1;
@@ -861,6 +907,15 @@ onMounted(async () => {
           }
         }
       }
+    }
+  }
+
+  if (config.is_offline_mode) {
+    if (!config.embedded_version) throw new Error('Never happen');
+    let embed_ver = Version.parse(config.embedded_version);
+    let remote = Version.parse(patch_data.version);
+    if (remote.compare(embed_ver) <= 0) {
+      embedded_is_latest = true;
     }
   }
 
