@@ -101,15 +101,15 @@ pub fn add_package(
     }
     let is_registered = is_registered?;
 
-    if is_registered {
+    let ex_code = res.ExtendedErrorCode();
+    if ex_code.is_err_and_capture("Failed to get extended error code") {
+        return Err(ex_code.unwrap_err());
+    }
+    let ex_code = ex_code?;
+
+    if is_registered && ex_code.is_ok() {
         Ok(true)
     } else {
-        let ex_code = res.ExtendedErrorCode();
-        if ex_code.is_err_and_capture("Failed to get extended error code") {
-            return Err(ex_code.unwrap_err());
-        }
-        let ex_code = ex_code?;
-
         Err(Error::from_hresult(ex_code))
     }
 }
