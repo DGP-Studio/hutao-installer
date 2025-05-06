@@ -45,8 +45,11 @@
             <span>{{ t('更新信息: x', [version_info]) }}</span>
             <vue-markdown :source="changelog" class="changelog" @click="handleMarkdownClick" />
           </div>
-          <button class="btn btn-install" @click="start" :disabled="!CONFIG.is_update && !acceptEula">
-            <span>{{ t('开始') }}</span>
+          <button :disabled="(!CONFIG.is_update && !acceptEula) || starting" class="btn btn-install" @click="start">
+            <span v-if="!starting">{{ t('开始') }}</span>
+            <span v-if="starting" class="fui-Spinner__spinner">
+                <span class="fui-Spinner__spinnerTail" />
+              </span>
           </button>
         </div>
         <div class="login" v-if="step === 2">
@@ -525,6 +528,7 @@ const homaUsername = ref<string>('');
 const homaPassword = ref<string>('');
 const progressInterval = ref<number>(0);
 
+const starting = ref<boolean>(false);
 const sha256 = ref<string>('');
 const mirrors = ref<GenericPatchPackageMirror[]>([]);
 const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
@@ -552,9 +556,12 @@ async function openTos(): Promise<void> {
 }
 
 async function start(): Promise<void> {
+  starting.value = true;
+
   if (CONFIG.is_offline_mode) {
     if (embedded_is_latest) {
       await install();
+      starting.value = false;
       return;
     }
 
@@ -564,6 +571,7 @@ async function start(): Promise<void> {
     })) {
       embedded_is_latest = true;
       await install();
+      starting.value = false;
       return;
     }
   }
@@ -571,11 +579,13 @@ async function start(): Promise<void> {
   if (isOversea.value) {
     selectedMirror.value = mirrors.value[0];
     await install();
+    starting.value = false;
     return;
   }
 
   if (isCdnAvailable.value || await IsCdnAvailable()) {
     await install();
+    starting.value = false;
     return;
   }
 
@@ -587,10 +597,12 @@ async function start(): Promise<void> {
     } else {
       step.value = 3;
     }
+    starting.value = false;
     return;
   }
 
   step.value = 2;
+  starting.value = false;
 }
 
 async function login(): Promise<void> {
