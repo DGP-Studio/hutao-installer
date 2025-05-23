@@ -45,4 +45,5 @@ type InstallStat = {
   speedLastSize: number;
   lastTime: DOMHighResTimeStamp;
   speed: number;
+  lowSpeedCount: number;
 };

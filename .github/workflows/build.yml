@@ -59,12 +59,19 @@ jobs:
           pnpm add @sentry/cli
           ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao_installer.pdb
       - name: Copy Binary
-        run: copy src-tauri/target/release/hutao-installer.exe Snap.Hutao.Deployment.exe
+        run: |
+          if (${{ env.BUILD_MODE }} -eq "online") {
+              $file = "Snap.Hutao.Deployment.exe"
+          } else {
+              $file = "Snap.Hutao.Deployment.Embedded.${{ env.EMBEDDED_VERSION }}.exe"
+          }
+          copy src-tauri/target/release/hutao-installer.exe $file
+          echo "DIST_FILENAME=$file" >> $env:GITHUB_ENV
       - name: Artifact
         uses: actions/upload-artifact@v4.6.0
         with:
           name: deployment-${{ env.BUILD_MODE }}
-          path: Snap.Hutao.Deployment.exe
+          path: ${{ env.DIST_FILENAME }}
       - name: pdb
         uses: actions/upload-artifact@v4.6.0
         with:

@@ -1,12 +1,12 @@
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{utils::SentryCapturable, REQUEST_CLIENT};
+use crate::{capture_and_return_err, REQUEST_CLIENT};
 
 pub async fn create_http_stream(
     url: &str,
     offset: usize,
     size: usize,
-) -> Result<(Box<dyn AsyncRead + Unpin + Send>, u64), String> {
+) -> Result<(Box<dyn AsyncRead + Unpin + Send>, u64), anyhow::Error> {
     let mut res = REQUEST_CLIENT.get(url);
     let has_range = offset > 0 || size > 0;
     if has_range {
@@ -15,12 +15,19 @@ pub async fn create_http_stream(
     }
     let res = res.send().await;
     if res.is_err() {
-        return Err(format!("Failed to send http request: {:?}", res.err()));
+        return Err(anyhow::anyhow!(
+            "Failed to send http request: {:?}",
+            res.err()
+        ));
     }
-    let res = res.unwrap();
+    let res = res?;
     let code = res.status();
     if (!has_range && code != 200) || (has_range && code != 206) {
-        return Err(format!("Failed to download: URL {} returned {}", url, code));
+        return Err(anyhow::anyhow!(
+            "Failed to download: URL {} returned {}",
+            url,
+            code
+        ));
     }
     let content_length = res.content_length().unwrap_or(0);
     let stream = futures::TryStreamExt::map_err(res.bytes_stream(), std::io::Error::other);
@@ -28,15 +35,15 @@ pub async fn create_http_stream(
     Ok((Box::new(reader), content_length))
 }
 
-pub async fn create_target_file(target: &str) -> Result<impl AsyncWrite, String> {
+pub async fn create_target_file(target: &str) -> Result<impl AsyncWrite, anyhow::Error> {
     let target_file = tokio::fs::File::create(target).await;
-    if target_file.is_err_and_capture("Failed to create target file") {
-        return Err(format!(
+    if target_file.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
             "Failed to create target file: {:?}",
             target_file.err()
         ));
     }
-    let target_file = target_file.unwrap();
+    let target_file = target_file?;
     let target_file = tokio::io::BufWriter::new(target_file);
     Ok(target_file)
 }
@@ -45,7 +52,7 @@ pub async fn progressed_copy(
     mut source: impl AsyncRead + Unpin,
     mut target: impl AsyncWrite + Unpin,
     on_progress: impl Fn(usize),
-) -> Result<usize, String> {
+) -> Result<usize, anyhow::Error> {
     let mut downloaded = 0;
     let mut boxed = Box::new([0u8; 256 * 1024]);
     let buffer = &mut *boxed;
@@ -53,9 +60,12 @@ pub async fn progressed_copy(
     loop {
         let read: Result<usize, std::io::Error> = source.read(buffer).await;
         if read.is_err() {
-            return Err(format!("Failed to read from decoder: {:?}", read.err()));
+            return Err(anyhow::anyhow!(
+                "Failed to read from decoder: {:?}",
+                read.err()
+            ));
         }
-        let read = read.unwrap();
+        let read = read?;
         if read == 0 {
             break;
         }
@@ -67,13 +77,19 @@ pub async fn progressed_copy(
         }
         let write = target.write_all(&buffer[..read]).await;
         if write.is_err() {
-            return Err(format!("Failed to write to target file: {:?}", write.err()));
+            return Err(anyhow::anyhow!(
+                "Failed to write to target file: {:?}",
+                write.err()
+            ));
         }
     }
     // flush the buffer
     let res = target.flush().await;
     if res.is_err() {
-        return Err(format!("Failed to flush target file: {:?}", res.err()));
+        return Err(anyhow::anyhow!(
+            "Failed to flush target file: {:?}",
+            res.err()
+        ));
     }
     // emit the final progress
     on_progress(downloaded);

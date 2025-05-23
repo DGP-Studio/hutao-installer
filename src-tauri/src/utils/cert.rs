@@ -1,9 +1,9 @@
-use crate::utils::SentryCapturable;
+use crate::capture_and_return_err;
 use std::ffi::CString;
 use tokio_util::bytes::Bytes;
 use windows::{core::s, Win32::Security::Cryptography::*};
 
-pub async fn find_certificate(subject: &str) -> Result<bool, String> {
+pub async fn find_certificate(subject: &str) -> Result<bool, anyhow::Error> {
     unsafe {
         let store_name = s!("Root").as_ptr();
         let h_store = CertOpenStore(
@@ -14,17 +14,16 @@ pub async fn find_certificate(subject: &str) -> Result<bool, String> {
             Some(store_name as _),
         );
 
-        if h_store.is_err_and_capture("Failed to open store") {
-            return Err(format!("Failed to open store: {:?}", h_store.err()));
+        if h_store.is_err() {
+            capture_and_return_err!(anyhow::anyhow!("Failed to open store: {:?}", h_store.err()));
         }
 
-        let h_store = h_store.unwrap();
+        let h_store = h_store?;
         if h_store.is_invalid() {
-            sentry_anyhow::capture_anyhow(&anyhow::anyhow!(
+            capture_and_return_err!(anyhow::anyhow!(
                 "Failed to open store: {:?}",
                 windows::core::Error::from_win32()
             ));
-            return Err("Failed to open store".to_string());
         }
 
         let mut cert: *mut CERT_CONTEXT = std::ptr::null_mut();
@@ -61,7 +60,7 @@ pub async fn find_certificate(subject: &str) -> Result<bool, String> {
 pub async fn install_certificate(
     content: Bytes,
     window: tauri::WebviewWindow,
-) -> Result<bool, String> {
+) -> Result<bool, anyhow::Error> {
     unsafe {
         let store_name = s!("ROOT").as_ptr();
         let h_store = CertOpenStore(
@@ -72,26 +71,24 @@ pub async fn install_certificate(
             Some(store_name as _),
         );
 
-        if h_store.is_err_and_capture("Failed to open store") {
-            return Err(format!("Failed to open store: {:?}", h_store.err()));
+        if h_store.is_err() {
+            capture_and_return_err!(anyhow::anyhow!("Failed to open store: {:?}", h_store.err()));
         }
 
-        let h_store = h_store.unwrap();
+        let h_store = h_store?;
         if h_store.is_invalid() {
-            sentry_anyhow::capture_anyhow(&anyhow::anyhow!(
+            capture_and_return_err!(anyhow::anyhow!(
                 "Failed to open store: {:?}",
                 windows::core::Error::from_win32()
             ));
-            return Err("Failed to open store".to_string());
         }
 
         let cert = CertCreateCertificateContext(X509_ASN_ENCODING, &content);
         if cert.is_null() {
-            sentry_anyhow::capture_anyhow(&anyhow::anyhow!(
+            capture_and_return_err!(anyhow::anyhow!(
                 "Failed to create certificate context: {:?}",
                 windows::core::Error::from_win32()
             ));
-            return Err("Failed to create certificate context".to_string());
         }
 
         let title = "安装证书".to_string();
@@ -122,8 +119,8 @@ https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root
 
         let _ = CertFreeCertificateContext(Some(cert));
 
-        if add_res.is_err_and_capture("Failed to add certificate to store") {
-            return Err(format!(
+        if add_res.is_err() {
+            capture_and_return_err!(anyhow::anyhow!(
                 "Failed to add certificate to store: {:?}",
                 add_res.err()
             ));

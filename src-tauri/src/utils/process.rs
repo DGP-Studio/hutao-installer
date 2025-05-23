@@ -1,9 +1,9 @@
-use crate::utils::SentryCapturable;
-use std::{io::Error, os::windows::process::ExitStatusExt, process::ExitStatus};
+use crate::{capture_and_return_err, capture_and_return_err_message_string};
+use std::{os::windows::process::ExitStatusExt, process::ExitStatus};
 use windows::{
     core::PWSTR,
     Win32::{
-        Foundation::{CloseHandle, GetLastError, WAIT_EVENT, WAIT_OBJECT_0},
+        Foundation::{CloseHandle, WAIT_EVENT, WAIT_OBJECT_0},
         System::{
             Diagnostics::ToolHelp::{
                 CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
@@ -30,16 +30,18 @@ pub fn is_process_running(
     let mut pid: Option<u32> = None;
     unsafe {
         let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if snapshot.is_err_and_capture("Failed to create snapshot") {
-            return Err(format!("Failed to create snapshot: {:?}", snapshot.err()));
+        if snapshot.is_err() {
+            capture_and_return_err_message_string!(format!(
+                "Failed to create snapshot: {:?}",
+                snapshot.err()
+            ));
         }
         let snapshot = snapshot.unwrap();
         if snapshot.is_invalid() {
-            sentry_anyhow::capture_anyhow(&anyhow::anyhow!(
+            capture_and_return_err_message_string!(format!(
                 "Failed to create snapshot: {:?}",
-                GetLastError()
+                windows::core::Error::from_win32()
             ));
-            return Err("Failed to create snapshot: invalid handle".to_string());
         }
         let mut entry: PROCESSENTRY32W = std::mem::zeroed();
         entry.dwSize = size_of::<PROCESSENTRY32W>() as u32;
@@ -102,30 +104,23 @@ pub fn get_process_path(pid: u32) -> Option<String> {
     Some(path)
 }
 
-pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
+pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, anyhow::Error> {
     unsafe {
         let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SYNCHRONIZE, false, pid);
-        if handle.is_err_and_capture("Failed to open process") {
-            return Err(Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                format!(
-                    "Failed to open process with pid {}, {:?}",
-                    pid,
-                    GetLastError()
-                ),
-            ));
+        if handle.is_err() {
+            capture_and_return_err!(anyhow::anyhow!(
+                "Failed to open process with pid {}: {:?}",
+                pid,
+                handle.err()
+            ))
         }
 
         let handle = handle?;
         if handle.is_invalid() {
-            sentry_anyhow::capture_anyhow(&anyhow::anyhow!(
+            capture_and_return_err!(anyhow::anyhow!(
                 "Invalid handle for pid {}: {:?}",
                 pid,
                 windows::core::Error::from_win32()
-            ));
-            return Err(Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("Invalid handle for pid {}", pid),
             ));
         }
 
@@ -143,13 +138,9 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
                     }
                 }
                 _ => {
-                    sentry_anyhow::capture_anyhow(&anyhow::anyhow!(
+                    capture_and_return_err!(anyhow::anyhow!(
                         "WaitForSingleObject failed for pid {}",
                         pid
-                    ));
-                    return Err(Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        format!("WaitForSingleObject failed for pid {}", pid),
                     ));
                 }
             }
@@ -158,10 +149,11 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, Error> {
         let result = GetExitCodeProcess(handle, &mut exit_code);
 
         let _ = CloseHandle(handle);
-        if result.is_err_and_capture("Failed to get exit code") {
-            return Err(Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to get exit code for pid {}", pid),
+        if result.is_err() {
+            capture_and_return_err!(anyhow::anyhow!(
+                "Failed to get exit code for pid {}: {:?}",
+                pid,
+                result.err()
             ));
         }
 

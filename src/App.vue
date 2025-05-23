@@ -61,7 +61,7 @@
                  :placeholder="t('密码')" />
           <div class="btn-container">
             <button class="btn btn-login" @click="loginSkip">
-              {{ t('跳过') }}
+              {{ t('返回') }}
             </button>
             <button class="btn btn-login" @click="login" :disabled="!emailRegex.test(homaUsername) ||
               homaPassword.length === 0 ||
@@ -76,7 +76,10 @@
         </div>
         <div class="choose-mirror" v-if="step === 3">
           <div class="choose-mirror-desc">
-            <div class="desc">{{ t('选择一个镜像源') }}</div>
+            <div class="desc">
+              {{ t('选择一个镜像源') }}
+              <a @click="gotoLogin"> {{ t('已购买胡桃云 CDN？') }} </a>
+            </div>
             <div class="listview">
               <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
                    :class="{ selected: selectedMirror === item }" @click="onItemClick(item)">
@@ -109,6 +112,8 @@
                 <CircleSuccess />
               </span>
               <div>{{ t(i) }}</div>
+              <a v-if="suggestOffline && subStep == 0" @click="openOfflineDownloadPage"> {{ t('下载很慢？试试离线包')
+                }} </a>
             </div>
           </div>
           <div class="current-status" v-html="current" />
@@ -205,6 +210,12 @@
   padding-left: 10px;
   padding-bottom: 2px;
   line-height: 1.4;
+  display: flex;
+  justify-content: space-between;
+
+  a {
+    cursor: pointer;
+  }
 }
 
 .account-input {
@@ -408,6 +419,10 @@
     height: 16px;
     display: block;
   }
+
+  a {
+    cursor: pointer;
+  }
 }
 
 .substep.done {
@@ -537,6 +552,7 @@ const isOversea = ref<boolean>(false);
 const logging_in = ref<boolean>(false);
 const version_info = ref<string>('');
 const changelog = ref<string>('');
+const suggestOffline = ref<boolean>(false);
 
 let embedded_is_latest = false;
 const CONFIG: Config = reactive({
@@ -594,15 +610,17 @@ async function start(): Promise<void> {
     if (await IsCdnAvailable()) {
       isCdnAvailable.value = true;
       await install();
-    } else {
-      step.value = 3;
+      starting.value = false;
+      return;
     }
-    starting.value = false;
-    return;
   }
 
-  step.value = 2;
+  step.value = 3;
   starting.value = false;
+}
+
+async function gotoLogin(): Promise<void> {
+  step.value = 2;
 }
 
 async function login(): Promise<void> {
@@ -626,6 +644,10 @@ async function login(): Promise<void> {
 
 async function loginSkip(): Promise<void> {
   step.value = 3;
+}
+
+async function openOfflineDownloadPage(): Promise<void> {
+  await invoke('open_browser', { url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share' });
 }
 
 async function install(): Promise<void> {
@@ -666,6 +688,7 @@ async function install(): Promise<void> {
         speedLastSize: 0,
         lastTime: performance.now(),
         speed: 0,
+        lowSpeedCount: 0,
       };
       progressInterval.value = setInterval(() => {
         const now = performance.now();
@@ -674,6 +697,14 @@ async function install(): Promise<void> {
           stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
           stat.speedLastSize = total_downloaded_size;
           stat.lastTime = now;
+
+          if ((stat.speed * 1000) < (100 * 1000)) {
+            stat.lowSpeedCount += 1;
+          }
+
+          if (!isOversea.value && stat.lowSpeedCount > 10) {
+            suggestOffline.value = true;
+          }
         }
         const speed = formatSize(stat.speed * 1000);
         const downloaded = formatSize(total_downloaded_size);

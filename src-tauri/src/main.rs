@@ -17,7 +17,7 @@ use sentry::protocol::Context;
 use std::collections::BTreeMap;
 use tauri::{window::Color, WindowEvent};
 use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
-use utils::{device::get_device_id, windows_version::get_windows_version, SentryCapturable};
+use utils::{device::get_device_id, windows_version::get_windows_version};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
@@ -70,8 +70,10 @@ fn main() {
     use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
     let _ = unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
 
-    std::env::set_var("RUST_BACKTRACE", "1");
-    std::env::set_var("RUST_LIB_BACKTRACE", "1");
+    unsafe {
+        std::env::set_var("RUST_BACKTRACE", "1");
+        std::env::set_var("RUST_LIB_BACKTRACE", "1");
+    }
 
     let _guard = sentry::init((
         "https://59ff148bff0f509baf01516d1f075d11@sentry.snapgenshin.com/10",
@@ -155,15 +157,17 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     // set cwd to temp dir
     let temp_dir = std::env::temp_dir();
     let res = std::env::set_current_dir(&temp_dir);
-    if res.is_err_and_capture(
-        format!("Failed to set current dir to temp dir: {:?}", temp_dir).as_str(),
-    ) {
+    if res.is_err() {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description("无法访问临时文件夹")
             .set_level(rfd::MessageLevel::Error)
             .show();
-        return;
+        capture_and_return!(anyhow::anyhow!(
+            "Failed to set current dir to temp dir: {:?}, {:?}",
+            temp_dir,
+            res.err()
+        ));
     }
     tauri::Builder::default()
         .plugin(singleton::init_as_plugin())

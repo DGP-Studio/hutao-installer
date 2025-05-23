@@ -7,18 +7,40 @@ pub mod process;
 pub mod uac;
 pub mod windows_version;
 
-pub trait SentryCapturable {
-    fn is_err_and_capture(&self, message: &str) -> bool;
+#[macro_export]
+macro_rules! capture_and_return {
+    ($err:expr) => {{
+        let err = $err;
+        sentry_anyhow::capture_anyhow(&err);
+        return;
+    }};
 }
 
-impl<T, E: std::fmt::Debug> SentryCapturable for Result<T, E> {
-    fn is_err_and_capture(&self, message: &str) -> bool {
-        if let Err(e) = self {
-            sentry_anyhow::capture_anyhow(&anyhow::anyhow!("{}: {:?}", message, e));
-            return true;
-        }
-        false
-    }
+#[macro_export]
+macro_rules! capture_and_return_default {
+    ($err:expr, $default:expr) => {{
+        let err = $err;
+        sentry_anyhow::capture_anyhow(&err);
+        return $default;
+    }};
+}
+
+#[macro_export]
+macro_rules! capture_and_return_err {
+    ($err:expr) => {{
+        let err = $err;
+        sentry_anyhow::capture_anyhow(&err);
+        return Err(err);
+    }};
+}
+
+#[macro_export]
+macro_rules! capture_and_return_err_message_string {
+    ($err_message:expr) => {{
+        let msg = $err_message;
+        sentry_anyhow::capture_anyhow(&anyhow::anyhow!(msg.clone()));
+        return Err(msg);
+    }};
 }
 
 pub struct Version {
@@ -102,11 +124,11 @@ impl Version {
         }
     }
 
-    pub fn from_string(version: &str) -> Result<Self, String> {
+    pub fn from_string(version: &str) -> Result<Self, anyhow::Error> {
         let parts: Vec<&str> = version.split('.').collect();
         // allow 1 to 4 parts, defaulting missing parts to 0
         if parts.len() > 4 {
-            return Err("Version string has too many parts".to_string());
+            return Err(anyhow::anyhow!("Version string has too many parts"));
         }
 
         let major = parts.first();
@@ -116,7 +138,7 @@ impl Version {
         };
         let major = match major {
             Ok(major) => major,
-            Err(e) => return Err(format!("Failed to parse major version: {:?}", e)),
+            Err(e) => return Err(anyhow::anyhow!("Failed to parse major version: {:?}", e)),
         };
 
         let minor = parts.get(1);
@@ -126,7 +148,7 @@ impl Version {
         };
         let minor = match minor {
             Ok(minor) => minor,
-            Err(e) => return Err(format!("Failed to parse minor version: {:?}", e)),
+            Err(e) => return Err(anyhow::anyhow!("Failed to parse minor version: {:?}", e)),
         };
 
         let build = parts.get(2);
@@ -136,7 +158,7 @@ impl Version {
         };
         let build = match build {
             Ok(build) => build,
-            Err(e) => return Err(format!("Failed to parse build version: {:?}", e)),
+            Err(e) => return Err(anyhow::anyhow!("Failed to parse build version: {:?}", e)),
         };
 
         let revision = parts.get(3);
@@ -146,7 +168,7 @@ impl Version {
         };
         let revision = match revision {
             Ok(revision) => revision,
-            Err(e) => return Err(format!("Failed to parse revision version: {:?}", e)),
+            Err(e) => return Err(anyhow::anyhow!("Failed to parse revision version: {:?}", e)),
         };
 
         Ok(Self {

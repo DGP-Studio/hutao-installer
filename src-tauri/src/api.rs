@@ -98,7 +98,7 @@ pub struct GenericPatchResp {
     pub data: Option<GenericPatchData>,
 }
 
-pub async fn generic_get_ip_info() -> Result<GenericIp, String> {
+pub async fn generic_get_ip_info() -> Result<GenericIp, anyhow::Error> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("api".to_string()),
         message: Some("Fetching ip info".to_string()),
@@ -108,16 +108,16 @@ pub async fn generic_get_ip_info() -> Result<GenericIp, String> {
     let url = "https://api.snapgenshin.com/ip";
     let resp = REQUEST_CLIENT.get(url).send().await;
     if resp.is_err() {
-        return Err(format!("Failed to send request: {:?}", resp.err()));
+        return Err(anyhow::anyhow!("Failed to send request: {:?}", resp.err()));
     }
-    let resp = resp.unwrap();
+    let resp = resp?;
     let json: Result<GenericIpResp, reqwest::Error> = resp.json().await;
     if json.is_err() {
-        return Err(format!("Failed to parse json: {:?}", json.err()));
+        return Err(anyhow::anyhow!("Failed to parse json: {:?}", json.err()));
     }
-    let json = json.unwrap();
+    let json = json?;
     if json.retcode != 0 {
-        return Err(format!("Failed to fetch ip: {:?}", json.message));
+        return Err(anyhow::anyhow!("Failed to fetch ip: {:?}", json.message));
     }
     Ok(json.data.unwrap())
 }
@@ -134,7 +134,7 @@ pub async fn generic_is_oversea() -> Result<bool, String> {
     if data.is_err() {
         return Err(format!("Failed to fetch ip info: {:?}", data.err()));
     }
-    let division = data?.division;
+    let division = data.unwrap().division;
     Ok(division == "Oversea")
 }
 
