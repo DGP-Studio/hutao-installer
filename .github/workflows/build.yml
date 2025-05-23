@@ -60,7 +60,7 @@ jobs:
           ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao_installer.pdb
       - name: Copy Binary
         run: |
-          if (${{ env.BUILD_MODE }} -eq "online") {
+          if ("${{ env.BUILD_MODE }}" -eq "online") {
               $file = "Snap.Hutao.Deployment.exe"
           } else {
               $file = "Snap.Hutao.Deployment.Embedded.${{ env.EMBEDDED_VERSION }}.exe"

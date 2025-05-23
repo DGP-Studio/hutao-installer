@@ -30,43 +30,49 @@
         </div>
         <div class="desc">{{ t('实用的开源多功能原神工具箱 🧰') }}</div>
         <div v-if="step === 1" class="actions">
-          <div v-if="!CONFIG.is_update" class="lnk">
-            <Checkbox v-model="createLnk" />
-            <span>{{ t('创建桌面快捷方式') }}</span>
-          </div>
-          <div v-if="!CONFIG.is_update" class="read">
-            <Checkbox v-model="acceptEula" />
-            <span>
+          <div class="sub-container">
+            <div v-if="!CONFIG.is_update" class="lnk">
+              <Checkbox v-model="createLnk" />
+              <span>{{ t('创建桌面快捷方式') }}</span>
+            </div>
+            <div v-if="!CONFIG.is_update" class="read">
+              <Checkbox v-model="acceptEula" />
+              <span>
               {{ t('我已阅读并同意') }}
               <a @click="openTos"> {{ t('用户协议') }} </a>
             </span>
+            </div>
+            <div v-if="CONFIG.is_update" class="update-info">
+              <span>{{ t('更新信息: x', [version_info]) }}</span>
+              <vue-markdown :source="changelog" class="changelog" @click="handleMarkdownClick" />
+            </div>
           </div>
-          <div v-if="CONFIG.is_update" class="update-info">
-            <span>{{ t('更新信息: x', [version_info]) }}</span>
-            <vue-markdown :source="changelog" class="changelog" @click="handleMarkdownClick" />
-          </div>
-          <button :disabled="(!CONFIG.is_update && !acceptEula) || starting" class="btn btn-install" @click="start">
-            <span v-if="!starting">{{ t('开始') }}</span>
-            <span v-if="starting" class="fui-Spinner__spinner">
+          <div class="new-btn-container">
+            <button :disabled="(!CONFIG.is_update && !acceptEula) || starting" class="btn new-btn" @click="start">
+              <span v-if="!starting">{{ t('开始') }}</span>
+              <span v-if="starting" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
-          </button>
+            </button>
+          </div>
         </div>
         <div class="login" v-if="step === 2">
-          <div class="desc">
-            {{ t('如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验') }}
+          <div class="sub-container">
+            <div class="desc">
+              {{ t('如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验') }}
+            </div>
+            <input v-model="homaUsername" :placeholder="t('用户名')" class="account-input" type="email" />
+            <input v-model="homaPassword" :placeholder="t('密码')" class="account-input textarea-password"
+                   type="password" />
           </div>
-          <input type="email" class="account-input" v-model="homaUsername" :placeholder="t('用户名')" />
-          <input type="password" class="account-input textarea-password" v-model="homaPassword"
-                 :placeholder="t('密码')" />
-          <div class="btn-container">
-            <button class="btn btn-login" @click="loginSkip">
+          <div class="new-btn-container">
+            <button class="btn new-btn" @click="loginSkip">
               {{ t('返回') }}
             </button>
-            <button class="btn btn-login" @click="login" :disabled="!emailRegex.test(homaUsername) ||
+            <button :disabled="!emailRegex.test(homaUsername) ||
               homaPassword.length === 0 ||
               logging_in
-              ">
+              " class="btn new-btn" @click="login">
               <span v-if="!logging_in">{{ t('登录') }}</span>
               <span v-if="logging_in" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
@@ -88,18 +94,22 @@
                   <span>{{ item.mirror_name }}</span>
                   <span>
                     {{
-                      item.speed == -1
-                        ? 'timeout'
-                        : `${item.speed?.toFixed(2)} MB/s`
+                      item.speed == null
+                        ? t('测速中')
+                        : item.speed == -1
+                          ? 'timeout'
+                          : `${item.speed?.toFixed(2)} MB/s`
                     }}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-          <button class="btn btn-install" @click="install" :disabled="!selectedMirror">
-            {{ CONFIG.is_update ? t('更新') : t('安装') }}
-          </button>
+          <div class="new-btn-container">
+            <button :disabled="!selectedMirror" class="btn new-btn" @click="install">
+              {{ CONFIG.is_update ? t('更新') : t('安装') }}
+            </button>
+          </div>
         </div>
         <div class="progress" v-if="step === 4">
           <div class="step-desc">
@@ -124,20 +134,22 @@
             <CircleSuccess />
             <span>{{ CONFIG.is_update ? t('更新完成') : t('安装完成') }}</span>
           </div>
-          <button class="btn btn-install" @click="launch">
-            {{ t('启动') }}
-          </button>
+          <div class="new-btn-container">
+            <button class="btn new-btn" @click="launch">
+              {{ t('启动') }}
+            </button>
+          </div>
         </div>
         <div class="finish" v-if="step === 6">
           <div class="finish-text">
             <CircleSuccess />
             <span>{{ t('您已安装最新版本') }}</span>
           </div>
-          <div class="btn-container">
-            <button class="btn btn-login" @click="restart">
+          <div class="new-btn-container">
+            <button class="btn new-btn" @click="restart">
               {{ t('重新安装') }}
             </button>
-            <button class="btn btn-login" @click="launch">
+            <button class="btn new-btn" @click="launch">
               {{ t('启动') }}
             </button>
           </div>
@@ -219,9 +231,8 @@
 }
 
 .account-input {
-  width: 100%;
   height: 32px;
-  padding: 6px;
+  padding: 8px;
   background: var(--colorTextareaBackground);
   color: var(--colorTextareaText);
   border-radius: 4px;
@@ -278,14 +289,13 @@
   line-height: 28px;
 }
 
-.btn-container {
+.new-btn-container {
   display: flex;
-  position: absolute;
   height: 40px;
-  width: 266px;
-  margin-left: 10px;
-  bottom: 36px;
+  flex-shrink: 0;
   gap: 10px;
+  margin-left: 10px;
+  justify-content: space-between;
 
   .fui-Spinner__spinner {
     width: 16px;
@@ -294,9 +304,9 @@
   }
 }
 
-.btn-login {
+.new-btn {
   height: 40px;
-  width: 140px;
+  width: 100%;
 }
 
 .btn-update-failed {
@@ -304,18 +314,21 @@
   width: 100px;
 }
 
-.btn-install {
-  height: 40px;
-  width: 140px;
-  position: absolute;
-  bottom: 36px;
-  right: 22px;
+.sub-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .actions,
-.login {
+.login,
+.choose-mirror,
+.finish {
+  height: 100%;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
 }
@@ -363,7 +376,6 @@
 .finish-text {
   text-align: center;
   opacity: 0.9;
-  width: 100%;
   margin-top: 20px;
   padding: 38px 10px;
   font-size: 18px;
@@ -390,7 +402,6 @@
 }
 
 .choose-mirror-desc {
-  padding: 14px 0;
   font-size: 14px;
   display: flex;
   flex-direction: column;
@@ -444,7 +455,7 @@
 }
 
 .listview {
-  max-height: 400px;
+  max-height: 147px;
   overflow-y: auto;
   padding: 4px;
   display: flex;
@@ -867,6 +878,7 @@ function onItemClick(item: GenericPatchPackageMirror): void {
 async function testMirrorSpeed(): Promise<void> {
   const testers = [];
   for (const mirror of mirrors.value) {
+    mirror.speed = null;
     testers.push(
       invoke<number>('speedtest_5mb', { url: mirror.url }).then(
         (s) => (mirror.speed = s),
