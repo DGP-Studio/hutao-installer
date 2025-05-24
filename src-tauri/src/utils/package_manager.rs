@@ -164,7 +164,7 @@ pub fn add_package(
         }
         let err_text = err_text?;
 
-        if ex_code == HRESULT(0x80070570u32 as i32) {
+        if ex_code == HRESULT(0x80070570u32 as i32) || ex_code == HRESULT(0x80070057u32 as i32) {
             let _ = std::fs::remove_file(raw_package_path);
         }
 

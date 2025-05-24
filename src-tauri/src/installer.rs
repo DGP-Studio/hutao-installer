@@ -1,4 +1,4 @@
-use crate::utils::process::wait_for_pid;
+use crate::utils::process::{is_process_running_by_pid, wait_for_pid};
 use crate::utils::Version;
 use crate::{
     capture_and_return_err_message_string,
@@ -391,9 +391,10 @@ pub async fn download_package(
     let progress_noti = move |downloaded: usize| {
         let _ = window.emit(&id, serde_json::json!((downloaded, len)));
     };
-    progressed_copy(&mut stream, &mut target, progress_noti)
-        .await
-        .unwrap();
+    let res = progressed_copy(&mut stream, &mut target, progress_noti).await;
+    if res.is_err() {
+        return Err(format!("Failed to download msix: {:?}", res.err()));
+    }
     // close streams
     drop(stream);
     drop(target);
@@ -582,6 +583,11 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
         level: sentry::Level::Info,
         ..Default::default()
     });
+
+    if !is_process_running_by_pid(pid) {
+        return Ok(());
+    }
+
     let handle = unsafe {
         windows::Win32::System::Threading::OpenProcess(
             windows::Win32::System::Threading::PROCESS_TERMINATE,

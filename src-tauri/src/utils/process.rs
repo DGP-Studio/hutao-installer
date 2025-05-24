@@ -79,6 +79,36 @@ pub fn is_process_running(
     Ok((found, pid))
 }
 
+pub fn is_process_running_by_pid(pid: u32) -> bool {
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot.is_err() {
+            return false;
+        }
+        let snapshot = snapshot.unwrap();
+        if snapshot.is_invalid() {
+            return false;
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+
+        if Process32FirstW(snapshot, &mut entry).is_ok() {
+            loop {
+                if entry.th32ProcessID == pid {
+                    let _ = CloseHandle(snapshot);
+                    return true;
+                }
+
+                if Process32NextW(snapshot, &mut entry).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snapshot);
+    }
+    false
+}
+
 pub fn get_process_path(pid: u32) -> Option<String> {
     // QueryFullProcessImageName
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) };
