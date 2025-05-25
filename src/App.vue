@@ -741,8 +741,8 @@ async function install(): Promise<void> {
         return;
       } finally {
         unlisten();
+        clearInterval(progressInterval.value);
       }
-      clearInterval(progressInterval.value);
     }
   }
   percent.value = 45;
