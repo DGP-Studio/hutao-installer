@@ -604,6 +604,11 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
         ));
     }
     let handle = handle.unwrap();
+
+    if !is_process_running_by_pid(pid) {
+        return Ok(());
+    }
+
     let ret = unsafe { windows::Win32::System::Threading::TerminateProcess(handle, 1) };
     if ret.is_err() {
         capture_and_return_err_message_string!(format!(
