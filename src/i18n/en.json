@@ -48,6 +48,10 @@
   "检测到 Snap Hutao 正在运行，是否结束进程继续部署？": "Snap Hutao detected running, do you want to end the process and continue deployment?",
   "结束进程失败，请手动结束进程后再尝试部署": "Failed to end the process, please end the process manually before attempting deployment",
   "请手动结束进程后再尝试部署": "Please end the process manually before attempting deployment",
+  "检测到不兼容的旧版本，安装程序将先卸载旧版本，数据不受影响，部分设置可能会丢失，是否继续？": "Incompatible old version detected, the installer will first uninstall the old version. Data will not be affected, but some settings may be lost. Do you want to continue?",
+  "正在卸载不兼容的旧版本……": "Uninstalling incompatible old version...",
+  "旧版本卸载失败，请重试": "Failed to uninstall old version, please try again",
+  "请先手动卸载旧版本后再重新部署": "Please manually uninstall the old version before redeploying",
   "部署进度": "Deployment progress",
   "很快就好……": "Almost done..."
 }

@@ -196,6 +196,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::check_globalsign_r45,
             installer::is_hutao_running,
             installer::kill_process,
+            installer::remove_outdated_package,
             installer::install_package,
             installer::create_desktop_lnk,
             installer::exit,

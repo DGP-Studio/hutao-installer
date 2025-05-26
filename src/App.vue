@@ -569,6 +569,7 @@ let embedded_is_latest = false;
 const CONFIG: Config = reactive({
   version: '0.0.0',
   is_update: false,
+  need_migration: false,
   skip_self_update: false,
   is_offline_mode: false,
   embedded_version: null,
@@ -810,6 +811,32 @@ async function install(): Promise<void> {
       }
     } else {
       await invoke('message_dialog', { 'title': t('提示'), 'message': t('请手动结束进程后再尝试部署') });
+      step.value = 1;
+      subStep.value = 0;
+      return;
+    }
+  }
+
+  if (CONFIG.need_migration) {
+    if (await invoke<boolean>('confirm_dialog', {
+      'title': t('提示'),
+      'message': t('检测到不兼容的旧版本，安装程序将先卸载旧版本，数据不受影响，部分设置可能会丢失，是否继续？'),
+    })) {
+      try {
+        current.value = t('正在卸载不兼容的旧版本……');
+        await invoke('remove_outdated_package');
+        current.value = t('正在部署包……');
+      } catch (e) {
+        await invoke('error_dialog', {
+          title: t('错误'),
+          message: t('旧版本卸载失败，请重试') + '\n\n' + e,
+        });
+        step.value = 1;
+        subStep.value = 0;
+        return;
+      }
+    } else {
+      await invoke('message_dialog', { 'title': t('提示'), 'message': t('请先手动卸载旧版本后再重新部署') });
       step.value = 1;
       subStep.value = 0;
       return;

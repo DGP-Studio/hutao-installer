@@ -34,6 +34,7 @@ type GenericPatchPackageMirror = {
 interface Config {
   version: string;
   is_update: boolean;
+  need_migration: boolean;
   skip_self_update: boolean;
   is_offline_mode: boolean;
   embedded_version: string | null;

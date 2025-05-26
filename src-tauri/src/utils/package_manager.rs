@@ -4,6 +4,53 @@ use windows::{
     Foundation::Uri,
     Management::Deployment::{AddPackageOptions, DeploymentProgress, PackageManager},
 };
+use windows_future::AsyncStatus;
+
+pub fn need_migration() -> bool {
+    let package_manager = PackageManager::new();
+    if package_manager.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!(
+                "Failed to create package manager: {:?}",
+                package_manager.err()
+            ),
+            false
+        );
+    }
+
+    let package_manager = package_manager.unwrap();
+
+    let package_family_name = HSTRING::from("60568DGPStudio.SnapHutao_ebfp3nyc27j86".to_string());
+    let packages = package_manager.FindPackagesByPackageFamilyName(&package_family_name);
+    if packages.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!(
+                "Failed to find packages by package family name: {:?}",
+                packages.err()
+            ),
+            false
+        );
+    }
+
+    let packages = packages.unwrap();
+    let iter = packages.First();
+    if iter.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to get first package iterator: {:?}", iter.err()),
+            false
+        );
+    }
+    let iter = iter.unwrap();
+
+    let has_current = iter.HasCurrent();
+    if has_current.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to check if has current: {:?}", has_current.err()),
+            false
+        );
+    }
+    has_current.unwrap()
+}
 
 pub fn try_get_hutao_version() -> Option<String> {
     let package_manager = PackageManager::new();
@@ -48,40 +95,39 @@ pub fn try_get_hutao_version() -> Option<String> {
             None
         );
     }
-    let has_current = has_current.unwrap();
 
-    if has_current {
-        let package = iter.Current();
-        if package.is_err() {
-            capture_and_return_default!(
-                anyhow::anyhow!("Failed to get current package: {:?}", package.err()),
-                None
-            );
-        }
-        let package = package.unwrap();
-        let id = package.Id();
-        if id.is_err() {
-            capture_and_return_default!(
-                anyhow::anyhow!("Failed to get package ID: {:?}", id.err()),
-                None
-            );
-        }
-        let id = id.unwrap();
-        let version = id.Version();
-        if version.is_err() {
-            capture_and_return_default!(
-                anyhow::anyhow!("Failed to get package version: {:?}", version.err()),
-                None
-            );
-        }
-        let version = version.unwrap();
-        Some(format!(
-            "{}.{}.{}.{}",
-            version.Major, version.Minor, version.Build, version.Revision
-        ))
-    } else {
-        None
+    if !has_current.unwrap() {
+        return None;
     }
+
+    let package = iter.Current();
+    if package.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to get current package: {:?}", package.err()),
+            None
+        );
+    }
+    let package = package.unwrap();
+    let id = package.Id();
+    if id.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to get package ID: {:?}", id.err()),
+            None
+        );
+    }
+    let id = id.unwrap();
+    let version = id.Version();
+    if version.is_err() {
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to get package version: {:?}", version.err()),
+            None
+        );
+    }
+    let version = version.unwrap();
+    Some(format!(
+        "{}.{}.{}.{}",
+        version.Major, version.Minor, version.Build, version.Revision
+    ))
 }
 
 pub fn add_package(
@@ -182,4 +228,121 @@ pub fn add_package(
             Error::from_hresult(ex_code)
         ));
     }
+}
+
+pub fn remove_package(package_family_name: String) -> Result<(), anyhow::Error> {
+    let package_manager = PackageManager::new();
+    if package_manager.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to create package manager: {:?}",
+            package_manager.err()
+        ));
+    }
+    let package_manager = package_manager?;
+
+    let family_name = HSTRING::from(package_family_name);
+    let packages = package_manager.FindPackagesByPackageFamilyName(&family_name);
+    if packages.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to find packages by package family name: {:?}",
+            packages.err()
+        ));
+    }
+    let packages = packages?;
+
+    let iter = packages.First();
+    if iter.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to get first package iterator: {:?}",
+            iter.err()
+        ));
+    }
+    let iter = iter?;
+
+    let has_current = iter.HasCurrent();
+    if has_current.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to check if has current: {:?}",
+            has_current.err()
+        ));
+    }
+    if !has_current? {
+        return Ok(());
+    }
+
+    let package = iter.Current();
+    if package.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to get current package: {:?}",
+            package.err()
+        ));
+    }
+    let package = package?;
+
+    let package_id = package.Id();
+    if package_id.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to get package ID: {:?}",
+            package_id.err()
+        ));
+    }
+    let package_id = package_id?;
+
+    let package_full_name = package_id.FullName();
+    if package_full_name.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to get package full name: {:?}",
+            package_full_name.err()
+        ));
+    }
+    let package_full_name = package_full_name?;
+
+    let op = package_manager.RemovePackageAsync(&package_full_name);
+    if op.is_err() {
+        capture_and_return_err!(anyhow::anyhow!("Failed to remove package: {:?}", op.err()));
+    }
+    let op = op?;
+
+    let res = op.get();
+    if res.is_err() {
+        capture_and_return_err!(anyhow::anyhow!("Failed to get result: {:?}", res.err()));
+    }
+    let res = res?;
+
+    let status = op.Status();
+    if status.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to get operation status: {:?}",
+            status.err()
+        ));
+    }
+    let status = status?;
+
+    if status != AsyncStatus::Completed {
+        let error_text = res.ErrorText();
+        if error_text.is_err() {
+            capture_and_return_err!(anyhow::anyhow!(
+                "Failed to get error text: {:?}",
+                error_text.err()
+            ));
+        }
+        let error_text = error_text?;
+
+        let extended_error_code = res.ExtendedErrorCode();
+        if extended_error_code.is_err() {
+            capture_and_return_err!(anyhow::anyhow!(
+                "Failed to get extended error code: {:?}",
+                extended_error_code.err()
+            ));
+        }
+        let extended_error_code = extended_error_code?;
+
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to remove package: {:?}, HResult Error: {:?}",
+            error_text,
+            Error::from_hresult(extended_error_code)
+        ));
+    }
+
+    Ok(())
 }

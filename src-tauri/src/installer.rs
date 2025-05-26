@@ -6,7 +6,7 @@ use crate::{
         cert::{find_certificate, install_certificate},
         dir::get_desktop,
         hash::run_sha256_file_hash_async,
-        package_manager::{add_package, try_get_hutao_version},
+        package_manager::{add_package, need_migration, remove_package, try_get_hutao_version},
         process::{self, is_process_running, is_process_running_by_pid, wait_for_pid},
         Version,
     },
@@ -33,6 +33,7 @@ const OFFLINE_PACKAGE_PAYLOAD: &[u8] = &[];
 pub struct Config {
     pub version: String,
     pub is_update: bool,
+    pub need_migration: bool,
     pub skip_self_update: bool,
     pub is_offline_mode: bool,
     pub embedded_version: Option<String>,
@@ -211,6 +212,7 @@ pub async fn get_config<R: Runtime>(
         None
     };
 
+    let need_migration = need_migration();
     let exists = try_get_hutao_version();
 
     let update_args = args.inner().clone();
@@ -219,6 +221,7 @@ pub async fn get_config<R: Runtime>(
         return Ok(Config {
             version: curr_ver.to_string(),
             is_update: true,
+            need_migration,
             skip_self_update: true,
             is_offline_mode: false,
             embedded_version,
@@ -230,6 +233,7 @@ pub async fn get_config<R: Runtime>(
     Ok(Config {
         version: curr_ver.to_string(),
         is_update: exists.is_some(),
+        need_migration,
         skip_self_update: offline,
         is_offline_mode: offline,
         embedded_version,
@@ -607,6 +611,25 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
             ret.err()
         ));
     }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn remove_outdated_package() -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Removing outdated package".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let res = remove_package("60568DGPStudio.SnapHutao_ebfp3nyc27j86".to_string());
+    if res.is_err() {
+        capture_and_return_err_message_string!(format!(
+            "Failed to remove package: {:?}",
+            res.err()
+        ));
+    }
+
     Ok(())
 }
 
