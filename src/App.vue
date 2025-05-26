@@ -824,7 +824,11 @@ async function install(): Promise<void> {
     percent.value = 55 + payload * 0.44;
   });
   try {
-    await invoke('install_package', { sha256: sha256.value, id: id });
+    if (!await invoke<boolean>('install_package', { sha256: sha256.value, id: id })) {
+      step.value = 1;
+      subStep.value = 0;
+      return;
+    }
   } catch (e) {
     await invoke('error_dialog', {
       title: t('错误'),

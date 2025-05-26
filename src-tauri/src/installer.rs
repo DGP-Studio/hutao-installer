@@ -1,5 +1,3 @@
-use crate::utils::process::{is_process_running_by_pid, wait_for_pid};
-use crate::utils::Version;
 use crate::{
     capture_and_return_err_message_string,
     cli::arg::UpdateArgs,
@@ -9,8 +7,8 @@ use crate::{
         dir::get_desktop,
         hash::run_sha256_file_hash_async,
         package_manager::{add_package, try_get_hutao_version},
-        process::is_process_running,
-        uac::run_elevated,
+        process::{self, is_process_running, is_process_running_by_pid, wait_for_pid},
+        Version,
     },
     REQUEST_CLIENT,
 };
@@ -167,7 +165,7 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
             write_res.err()
         ));
     }
-    run_elevated(&exe_path, "");
+    process::run(true, &exe_path, None::<&str>);
     app.exit(0);
 
     Ok(())
@@ -617,7 +615,7 @@ pub async fn install_package(
     sha256: String,
     id: String,
     window: WebviewWindow,
-) -> Result<(), String> {
+) -> Result<bool, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
         message: Some("Installing package".to_string()),
@@ -652,8 +650,12 @@ pub async fn install_package(
         ));
     }
 
-    let _ = tokio::fs::remove_file(installer_path).await;
-    Ok(())
+    if install_res.unwrap() {
+        let _ = tokio::fs::remove_file(installer_path).await;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]
@@ -731,6 +733,6 @@ pub async fn exit(app: AppHandle) {
 #[tauri::command]
 pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
-    run_elevated(target, "");
+    process::run(true, target, None::<&str>);
     app.exit(0);
 }

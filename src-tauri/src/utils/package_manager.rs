@@ -1,7 +1,6 @@
-use crate::{capture_and_return_default, capture_and_return_err};
-use windows::core::HRESULT;
+use crate::{capture_and_return_default, capture_and_return_err, utils::process};
 use windows::{
-    core::{Error, HSTRING},
+    core::{Error, HRESULT, HSTRING},
     Foundation::Uri,
     Management::Deployment::{AddPackageOptions, DeploymentProgress, PackageManager},
 };
@@ -166,6 +165,15 @@ pub fn add_package(
 
         if ex_code == HRESULT(0x80070570u32 as i32) || ex_code == HRESULT(0x80070057u32 as i32) {
             let _ = std::fs::remove_file(raw_package_path);
+        } else if ex_code == HRESULT(0x80073CFFu32 as i32) {
+            rfd::MessageDialog::new()
+                .set_title("错误")
+                .set_description("部署包失败，请启用开发者模式\n\n点击确定将跳转到开发者设置页面")
+                .set_level(rfd::MessageLevel::Error)
+                .show();
+
+            process::run(false, "ms-settings:developers", None::<&str>);
+            return Ok(false);
         }
 
         capture_and_return_err!(anyhow::anyhow!(

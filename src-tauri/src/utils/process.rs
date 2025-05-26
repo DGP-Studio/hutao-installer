@@ -1,7 +1,7 @@
 use crate::{capture_and_return_err, capture_and_return_err_message_string};
-use std::{os::windows::process::ExitStatusExt, process::ExitStatus};
+use std::{ffi::OsStr, os::windows::process::ExitStatusExt, process::ExitStatus};
 use windows::{
-    core::PWSTR,
+    core::{w, HSTRING, PCWSTR, PWSTR},
     Win32::{
         Foundation::{CloseHandle, WAIT_EVENT, WAIT_OBJECT_0},
         System::{
@@ -15,12 +15,41 @@ use windows::{
                 PROCESS_SYNCHRONIZE,
             },
         },
-        UI::WindowsAndMessaging::{
-            DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage, PM_REMOVE,
-            QS_ALLINPUT,
+        UI::{
+            Shell::{
+                ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+            },
+            WindowsAndMessaging::{
+                DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage,
+                PM_REMOVE, QS_ALLINPUT,
+            },
         },
     },
 };
+
+pub fn run<S: AsRef<OsStr>, T: AsRef<OsStr>>(elevated: bool, program_path: S, args: Option<T>) {
+    let file = PCWSTR(HSTRING::from(program_path.as_ref()).as_ptr());
+    let par = if args.is_some() {
+        PCWSTR(HSTRING::from(args.unwrap().as_ref()).as_ptr())
+    } else {
+        PCWSTR::null()
+    };
+
+    let mut sei = SHELLEXECUTEINFOW {
+        cbSize: size_of::<SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS,
+        lpVerb: if elevated { w!("runas") } else { w!("open") },
+        lpFile: file,
+        lpParameters: par,
+        nShow: 1,
+        ..Default::default()
+    };
+    unsafe {
+        let _ = ShellExecuteExW(&mut sei);
+        let process = sei.hProcess;
+        let _ = CloseHandle(process);
+    }
+}
 
 pub fn is_process_running(
     proc_name: String,
