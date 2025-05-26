@@ -54,7 +54,6 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_PROJECT: installer
-          SENTRY_LOG_LEVEL: debug
         run: |
           pnpm add @sentry/cli
           ./node_modules/.bin/sentry-cli debug-files upload --include-sources ./src-tauri/target/release/hutao_installer.pdb

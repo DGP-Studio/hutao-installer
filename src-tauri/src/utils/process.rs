@@ -29,8 +29,8 @@ use windows::{
 
 pub fn run<S: AsRef<OsStr>, T: AsRef<OsStr>>(elevated: bool, program_path: S, args: Option<T>) {
     let file = PCWSTR(HSTRING::from(program_path.as_ref()).as_ptr());
-    let par = if args.is_some() {
-        PCWSTR(HSTRING::from(args.unwrap().as_ref()).as_ptr())
+    let par = if let Some(args) = args {
+        PCWSTR(HSTRING::from(args.as_ref()).as_ptr())
     } else {
         PCWSTR::null()
     };
