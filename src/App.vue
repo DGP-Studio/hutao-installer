@@ -851,7 +851,7 @@ async function install(): Promise<void> {
     percent.value = 55 + payload * 0.44;
   });
   try {
-    if (!await invoke<boolean>('install_package', { sha256: sha256.value, id: id, offline_mode: embedded_is_latest })) {
+    if (!await invoke<boolean>('install_package', { sha256: sha256.value, id: id, offlineMode: embedded_is_latest })) {
       step.value = 1;
       subStep.value = 0;
       return;
