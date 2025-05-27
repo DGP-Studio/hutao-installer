@@ -642,6 +642,7 @@ pub async fn remove_outdated_package() -> Result<(), String> {
 pub async fn install_package(
     sha256: String,
     id: String,
+    offline_mode: bool,
     window: WebviewWindow,
 ) -> Result<bool, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
@@ -652,17 +653,19 @@ pub async fn install_package(
     });
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
-    let hash = run_sha256_file_hash_async(installer_path.to_str().unwrap()).await;
-    if hash.is_err() {
-        capture_and_return_err_message_string!(format!(
-            "Failed to hash installer: {:?}",
-            hash.err()
-        ));
-    }
+    if !offline_mode {
+        let hash = run_sha256_file_hash_async(installer_path.to_str().unwrap()).await;
+        if hash.is_err() {
+            capture_and_return_err_message_string!(format!(
+                "Failed to hash installer: {:?}",
+                hash.err()
+            ));
+        }
 
-    let hash = hash.unwrap();
-    if hash != sha256 {
-        return Err("Installer hash mismatch".to_string());
+        let hash = hash.unwrap();
+        if hash != sha256 {
+            return Err("Installer hash mismatch".to_string());
+        }
     }
 
     let install_res = add_package(
