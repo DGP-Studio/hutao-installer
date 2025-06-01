@@ -66,8 +66,10 @@
               {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
               </span>
             </div>
-            <input v-model="homaUsername" :placeholder="t('邮箱')" class="account-input" type="email" />
-            <input v-model="homaPassword" :placeholder="t('密码')" class="account-input textarea-password"
+            <input v-model="homaUsername" :placeholder="t('邮箱')" autocomplete="off" class="account-input"
+                   type="email" />
+            <input v-model="homaPassword" :placeholder="t('密码')" autocomplete="off"
+                   class="account-input textarea-password"
                    type="password" />
           </div>
           <div class="new-btn-container">
@@ -95,9 +97,11 @@
               {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
               </span>
             </div>
-            <input v-model="homaUsername" :placeholder="t('邮箱')" class="account-input" type="email" />
+            <input v-model="homaUsername" :placeholder="t('邮箱')" autocomplete="off" class="account-input"
+                   type="email" />
             <div class="verify-code-container">
-              <input v-model="homaVerifyCode" :placeholder="t('验证码')" class="account-input verify-code-input"
+              <input v-model="homaVerifyCode" :placeholder="t('验证码')" autocomplete="off"
+                     class="account-input verify-code-input"
                      type="text" />
               <button :disabled="requestingVerifyCode || verifyCodeCooldown || !emailRegex.test(homaUsername)"
                       class="btn btn-req-verify-code" @click="requestVerifyCode">
@@ -110,9 +114,11 @@
                 </span>
               </button>
             </div>
-            <input v-model="homaPassword" :placeholder="t('密码')" class="account-input textarea-password"
+            <input v-model="homaPassword" :placeholder="t('密码')" autocomplete="off"
+                   class="account-input textarea-password"
                    type="password" />
-            <input v-model="homaRedeemCode" :placeholder="t('胡桃云兑换码')" class="account-input" type="text" />
+            <input v-model="homaRedeemCode" :placeholder="t('胡桃云兑换码')" autocomplete="off" class="account-input"
+                   type="text" />
           </div>
           <div class="new-btn-container">
             <button class="btn new-btn" @click="loginSkip">
