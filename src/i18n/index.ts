@@ -22,6 +22,9 @@ const getLocale = () => {
   return locale;
 };
 
+const messages: Record<string, Record<string, string>> = { chs, cht, en, ja };
+const locale = getLocale();
+
 export const getLang = () => {
   let locale = navigator.language || 'en';
   if (locale.includes('-')) {
@@ -42,10 +45,24 @@ export const getLang = () => {
   }
 };
 
+export const getLocalizedString = (key: string): string => {
+  if (messages[locale] && messages[locale][key]) {
+    return messages[locale][key];
+  }
+  return messages['en'][key] || key; // Fallback to English or return the key itself
+};
+
+export const formatLocalizedString = (key: string, ...args: any[]): string => {
+  const localizedString = getLocalizedString(key);
+  return args.reduce((str, arg, index) => {
+    return str.replace(`{${index}}`, arg);
+  }, localizedString);
+};
+
 const i18n = createI18n({
   legacy: false,
-  locale: getLocale(),
-  messages: { chs, cht, en, ja },
+  locale: locale,
+  messages: messages,
   globalInjection: true,
   fallbackLocale: 'en',
 });

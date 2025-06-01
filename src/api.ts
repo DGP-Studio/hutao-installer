@@ -2,6 +2,7 @@ import { invoke } from './tauri.ts';
 
 // @ts-expect-error crypto will be there
 import crypto from 'crypto';
+import { formatLocalizedString, getLocalizedString } from './i18n';
 
 const PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5W2SEyZSlP2zBI1Sn8Gd
@@ -36,6 +37,60 @@ export async function fetchPatchData(): Promise<GenericPatchData> {
   return data;
 }
 
+export async function RequestHomaPassportVerifyCode(username: string): Promise<boolean> {
+  const res = await invoke<HomaResp>('homa_request_verify_code', {
+    username: encrypt(username),
+  });
+  if (res.retcode === 0) {
+    return true;
+  } else {
+    await invoke('error_dialog', {
+      title: getLocalizedString('请求验证码失败'),
+      message: res.message,
+    });
+    return false;
+  }
+}
+
+export async function RegisterHomaPassportAndUseRedeemCode(
+  username: string,
+  password: string,
+  verifyCode: string,
+  redeemCode: string,
+): Promise<boolean> {
+  const req: HomaPassportRegisterReq = {
+    UserName: encrypt(username),
+    Password: encrypt(password),
+    VerifyCode: encrypt(verifyCode),
+  };
+  const res = await invoke<HomaPassportOperationResp>('homa_register', {
+    registerReq: req,
+  });
+  if (res.retcode !== 0) {
+    await invoke('error_dialog', {
+      title: getLocalizedString('注册失败'),
+      message: res.message,
+    });
+    return false;
+  }
+
+  cachedToken = res.data ?? null;
+
+  const redeemRes = await invoke<HomaPassportOperationResp>('homa_use_redeem_code', {
+    token: cachedToken,
+    code: redeemCode,
+  });
+  if (redeemRes.retcode !== 0) {
+    await invoke('error_dialog', {
+      title: getLocalizedString('兑换码使用失败'),
+      message: formatLocalizedString('注册成功，但是x', [redeemRes.message]),
+    });
+    return false;
+  }
+
+  return true;
+}
+
 export async function LoginHomaPassport(
   username: string,
   password: string,
@@ -44,7 +99,7 @@ export async function LoginHomaPassport(
     UserName: encrypt(username),
     Password: encrypt(password),
   };
-  const res = await invoke<HomaPassportLoginResp>('homa_login', {
+  const res = await invoke<HomaPassportOperationResp>('homa_login', {
     loginReq: req,
   });
   if (res.retcode === 0) {
@@ -53,7 +108,7 @@ export async function LoginHomaPassport(
   }
 
   await invoke('error_dialog', {
-    title: '登录失败',
+    title: getLocalizedString('登录失败'),
     message: res.message,
   });
   return false;

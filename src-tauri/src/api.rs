@@ -11,7 +11,13 @@ pub struct HomaDistributionGetAcceleratedMirrorResp {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct HomaPassportLoginResp {
+pub struct HomaResp {
+    pub retcode: i32,
+    pub message: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct HomaPassportOperationResp {
     pub retcode: i32,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,6 +30,16 @@ pub struct HomaPassportLoginReq {
     pub username: String,
     #[serde(rename = "Password")]
     pub password: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct HomaPassportRegisterReq {
+    #[serde(rename = "UserName")]
+    pub username: String,
+    #[serde(rename = "Password")]
+    pub password: String,
+    #[serde(rename = "VerifyCode")]
+    pub verify_code: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -164,7 +180,59 @@ pub async fn generic_get_patch() -> Result<GenericPatchData, String> {
 }
 
 #[tauri::command]
-pub async fn homa_login(login_req: HomaPassportLoginReq) -> Result<HomaPassportLoginResp, String> {
+pub async fn homa_request_verify_code(
+    username: String,
+) -> Result<HomaPassportOperationResp, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Requesting verify code from homa".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let url = "https://homa.snapgenshin.com/Passport/Verify";
+    let resp = REQUEST_CLIENT
+        .post(url)
+        .json(&serde_json::json!({ "UserName": username }))
+        .send()
+        .await;
+    if resp.is_err() {
+        return Err(format!("Failed to send request: {:?}", resp.err()));
+    }
+    let resp = resp.unwrap();
+    let json: Result<HomaPassportOperationResp, reqwest::Error> = resp.json().await;
+    if json.is_err() {
+        return Err(format!("Failed to parse json: {:?}", json.err()));
+    }
+    Ok(json.unwrap())
+}
+
+#[tauri::command]
+pub async fn homa_register(
+    register_req: HomaPassportRegisterReq,
+) -> Result<HomaPassportOperationResp, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Registering homa".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let url = "https://homa.snapgenshin.com/Passport/Register";
+    let resp = REQUEST_CLIENT.post(url).json(&register_req).send().await;
+    if resp.is_err() {
+        return Err(format!("Failed to send request: {:?}", resp.err()));
+    }
+    let resp = resp.unwrap();
+    let json: Result<HomaPassportOperationResp, reqwest::Error> = resp.json().await;
+    if json.is_err() {
+        return Err(format!("Failed to parse json: {:?}", json.err()));
+    }
+    Ok(json.unwrap())
+}
+
+#[tauri::command]
+pub async fn homa_login(
+    login_req: HomaPassportLoginReq,
+) -> Result<HomaPassportOperationResp, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("api".to_string()),
         message: Some("Logging in homa".to_string()),
@@ -177,7 +245,33 @@ pub async fn homa_login(login_req: HomaPassportLoginReq) -> Result<HomaPassportL
         return Err(format!("Failed to send request: {:?}", resp.err()));
     }
     let resp = resp.unwrap();
-    let json: Result<HomaPassportLoginResp, reqwest::Error> = resp.json().await;
+    let json: Result<HomaPassportOperationResp, reqwest::Error> = resp.json().await;
+    if json.is_err() {
+        return Err(format!("Failed to parse json: {:?}", json.err()));
+    }
+    Ok(json.unwrap())
+}
+
+#[tauri::command]
+pub async fn homa_use_redeem_code(token: String, code: String) -> Result<HomaResp, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("api".to_string()),
+        message: Some("Using redeem code on homa".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let url = "https://homa.snapgenshin.com/Redeem/Use";
+    let resp = REQUEST_CLIENT
+        .post(url)
+        .header("Authorization", &format!("Bearer {}", token))
+        .json(&serde_json::json!({ "code": code }))
+        .send()
+        .await;
+    if resp.is_err() {
+        return Err(format!("Failed to send request: {:?}", resp.err()));
+    }
+    let resp = resp.unwrap();
+    let json: Result<HomaResp, reqwest::Error> = resp.json().await;
     if json.is_err() {
         return Err(format!("Failed to parse json: {:?}", json.err()));
     }

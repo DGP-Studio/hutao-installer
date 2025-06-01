@@ -59,7 +59,12 @@
         <div class="login" v-if="step === 2">
           <div class="sub-container">
             <div class="desc">
-              {{ t('如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验') }}
+              <span>
+                {{ t('登录') }}
+              /
+              <a @click="goToRegister">{{ t('注册') }}</a>
+              {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
+              </span>
             </div>
             <input v-model="homaUsername" :placeholder="t('用户名')" class="account-input" type="email" />
             <input v-model="homaPassword" :placeholder="t('密码')" class="account-input textarea-password"
@@ -75,6 +80,51 @@
               " class="btn new-btn" @click="login">
               <span v-if="!logging_in">{{ t('登录') }}</span>
               <span v-if="logging_in" class="fui-Spinner__spinner">
+                <span class="fui-Spinner__spinnerTail" />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div v-if="step === 7" class="register">
+          <div class="sub-container">
+            <div class="desc">
+              <span>
+               <a @click="gotoLogin"> {{ t('登录') }}</a>
+              /
+              {{ t('注册') }}
+              {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
+              </span>
+            </div>
+            <input v-model="homaUsername" :placeholder="t('用户名')" class="account-input" type="email" />
+            <div class="verify-code-container">
+              <input v-model="homaVerifyCode" :placeholder="t('验证码')" class="account-input verify-code-input"
+                     type="text" />
+              <button :disabled="verifyCodeCooldown" class="btn btn-req-verify-code" @click="requestVerifyCode">
+                <span v-if="!requestingVerifyCode && !verifyCodeCooldown">{{ t('获取') }}</span>
+                <span v-if="requestingVerifyCode" class="fui-Spinner__spinner">
+                  <span class="fui-Spinner__spinnerTail" />
+                </span>
+                <span v-if="verifyCodeCooldown">
+                  {{ t('获取: x', [verifyCodeCountdown]) }}
+                </span>
+              </button>
+            </div>
+            <input v-model="homaPassword" :placeholder="t('密码')" class="account-input textarea-password"
+                   type="password" />
+            <input v-model="homaRedeemCode" :placeholder="t('胡桃云兑换码')" class="account-input" type="text" />
+          </div>
+          <div class="new-btn-container">
+            <button class="btn new-btn" @click="loginSkip">
+              {{ t('返回') }}
+            </button>
+            <button :disabled="!emailRegex.test(homaUsername) ||
+            homaVerifyCode.length !== 8 ||
+              homaPassword.length === 0 ||
+              homaRedeemCode.length !== 18 ||
+              registering
+              " class="btn new-btn" @click="register">
+              <span v-if="!registering">{{ t('注册') }}</span>
+              <span v-if="registering" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
             </button>
@@ -223,6 +273,7 @@
   padding-bottom: 2px;
   line-height: 1.4;
   display: flex;
+  gap: 8px;
   justify-content: space-between;
 
   a {
@@ -241,7 +292,7 @@
   resize: none;
   opacity: 0.8;
   margin-left: 10px;
-  margin-top: 4px;
+  margin-bottom: 4px;
   font-family: Consolas,
   'Courier New',
   Microsoft Yahei,
@@ -250,13 +301,17 @@
   outline: none;
 }
 
+.verify-code-input {
+  width: 100%;
+}
+
 .textarea-password {
   -webkit-text-security: disc;
 }
 
 .image {
-  min-width: 280px;
-  width: 280px;
+  min-width: 300px;
+  width: 300px;
   box-sizing: border-box;
   padding: 8px;
 
@@ -273,7 +328,7 @@
   text-align: left;
   display: flex;
   flex-direction: column;
-  padding: 32px;
+  padding: 24px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -309,6 +364,25 @@
   width: 100%;
 }
 
+.verify-code-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+
+  .fui-Spinner__spinner {
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+}
+
+.btn-req-verify-code {
+  height: 32px;
+  margin-bottom: 4px;
+  vertical-align: center;
+}
+
 .btn-update-failed {
   height: 40px;
   width: 100px;
@@ -323,6 +397,7 @@
 
 .actions,
 .login,
+.register,
 .choose-mirror,
 .finish {
   height: 100%;
@@ -374,10 +449,10 @@
 }
 
 .finish-text {
+  height: 100%;
   text-align: center;
   opacity: 0.9;
-  margin-top: 20px;
-  padding: 38px 10px;
+  padding: 0 10px 38px;
   font-size: 18px;
   display: flex;
   justify-content: center;
@@ -519,10 +594,21 @@ import { getCurrentWindow, invoke, listen } from './tauri';
 import Checkbox from './components/Checkbox.vue';
 import CircleSuccess from './components/CircleSuccess.vue';
 import { v4 as uuid } from 'uuid';
-import { fetchIsOversea, fetchPatchData, GetCdnUrl, IsCdnAvailable, LoadToken, LoginHomaPassport } from './api';
+import {
+  fetchIsOversea,
+  fetchPatchData,
+  GetCdnUrl,
+  IsCdnAvailable,
+  LoadToken,
+  LoginHomaPassport,
+  RegisterHomaPassportAndUseRedeemCode,
+  RequestHomaPassportVerifyCode,
+} from './api';
 import { getLang } from './i18n';
 
 const { t } = useI18n();
+
+// Process init
 const init = ref(false);
 const selfUpdating = ref(false);
 const selfUpdateFailed = ref(false);
@@ -535,35 +621,55 @@ const subStepList: ReadonlyArray<string> = [
   t('部署文件'),
 ];
 
-const acceptEula = ref<boolean>(true);
-const createLnk = ref<boolean>(true);
 /**
  * 1: EULA
  * 2: Login
  * 3: Choose Mirror
- * 4: Downloading
+ * 4: Install
  * 5: Finish
  * 6: Already Installed
+ * 7: Register
  */
 const step = ref<number>(1);
 const subStep = ref<number>(0);
 
-const current = ref<string>('');
-const percent = ref<number>(0);
-const homaUsername = ref<string>('');
-const homaPassword = ref<string>('');
-const progressInterval = ref<number>(0);
-
+// Step 1
+const acceptEula = ref<boolean>(true);
+const createLnk = ref<boolean>(true);
 const starting = ref<boolean>(false);
-const sha256 = ref<string>('');
-const mirrors = ref<GenericPatchPackageMirror[]>([]);
-const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
-const isCdnAvailable = ref<boolean>(false);
-const isOversea = ref<boolean>(false);
-const logging_in = ref<boolean>(false);
 const version_info = ref<string>('');
 const changelog = ref<string>('');
+let isCdnAvailable = false;
+let isOversea = false;
+
+// Step 2
+const homaUsername = ref<string>('');
+const homaPassword = ref<string>('');
+const logging_in = ref<boolean>(false);
+
+// Step 3
+const mirrors = ref<GenericPatchPackageMirror[]>([]);
+const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
+
+// Step 4
+const current = ref<string>('');
+const percent = ref<number>(0);
+
 const suggestOffline = ref<boolean>(false);
+let sha256 = '';
+
+// Step 7
+const homaVerifyCode = ref<string>('');
+const homaRedeemCode = ref<string>('');
+
+const requestingVerifyCode = ref<boolean>(false);
+const verifyCodeCooldown = ref<boolean>(false);
+const verifyCodeCountdown = ref<number>(0);
+const registering = ref<boolean>(false);
+
+// Intervals
+let progressInterval = 0;
+let verifyCodeInterval = 0;
 
 let embedded_is_latest = false;
 const CONFIG: Config = reactive({
@@ -604,14 +710,14 @@ async function start(): Promise<void> {
     }
   }
 
-  if (isOversea.value) {
+  if (isOversea) {
     selectedMirror.value = mirrors.value[0];
     await install();
     starting.value = false;
     return;
   }
 
-  if (isCdnAvailable.value || await IsCdnAvailable()) {
+  if (isCdnAvailable || await IsCdnAvailable()) {
     await install();
     starting.value = false;
     return;
@@ -620,7 +726,7 @@ async function start(): Promise<void> {
   if (CONFIG.token) {
     await LoadToken(CONFIG.token);
     if (await IsCdnAvailable()) {
-      isCdnAvailable.value = true;
+      isCdnAvailable = true;
       await install();
       starting.value = false;
       return;
@@ -642,7 +748,7 @@ async function login(): Promise<void> {
     return;
   }
   if (await IsCdnAvailable()) {
-    isCdnAvailable.value = true;
+    isCdnAvailable = true;
     await install();
   } else {
     await invoke('message_dialog', {
@@ -654,8 +760,69 @@ async function login(): Promise<void> {
   logging_in.value = false;
 }
 
+async function register(): Promise<void> {
+  registering.value = true;
+  if (!(await RegisterHomaPassportAndUseRedeemCode(homaUsername.value, homaPassword.value, homaVerifyCode.value, homaRedeemCode.value))) {
+    registering.value = false;
+    return;
+  }
+  if (await IsCdnAvailable()) {
+    isCdnAvailable = true;
+    await install();
+  } else {
+    await invoke('message_dialog', {
+      title: t('无 CDN 权限'),
+      message: t('未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包'),
+    });
+    step.value = 3;
+  }
+  registering.value = false;
+}
+
+async function requestVerifyCode(): Promise<void> {
+  if (homaUsername.value.length === 0) {
+    await invoke('error_dialog', {
+      title: t('错误'),
+      message: t('请输入用户名'),
+    });
+    return;
+  }
+
+  if (!emailRegex.test(homaUsername.value)) {
+    await invoke('error_dialog', {
+      title: t('错误'),
+      message: t('请输入正确的邮箱地址'),
+    });
+    return;
+  }
+
+  requestingVerifyCode.value = true;
+  if (!(await RequestHomaPassportVerifyCode(homaUsername.value))) {
+    requestingVerifyCode.value = false;
+    return;
+  }
+  verifyCodeCooldown.value = true;
+  requestingVerifyCode.value = false;
+  verifyCodeCountdown.value = 60;
+  verifyCodeInterval = setInterval(() => {
+    if (verifyCodeCountdown.value > 0) {
+      verifyCodeCountdown.value -= 1;
+    } else {
+      clearInterval(verifyCodeInterval);
+      verifyCodeCooldown.value = false;
+    }
+  }, 1000);
+}
+
 async function loginSkip(): Promise<void> {
   step.value = 3;
+}
+
+async function goToRegister(): Promise<void> {
+  verifyCodeCooldown.value = false;
+  verifyCodeCountdown.value = 0;
+  clearInterval(verifyCodeInterval);
+  step.value = 7;
 }
 
 async function openOfflineDownloadPage(): Promise<void> {
@@ -679,11 +846,11 @@ async function install(): Promise<void> {
     }
   } else {
     current.value = t('准备下载……');
-    const package_exists_and_valid = await invoke<boolean>('check_temp_package_valid', { 'sha256': sha256.value });
+    const package_exists_and_valid = await invoke<boolean>('check_temp_package_valid', { 'sha256': sha256 });
     if (!package_exists_and_valid) {
       let mirror_url;
       try {
-        mirror_url = isCdnAvailable.value ? await GetCdnUrl() : selectedMirror.value!.url;
+        mirror_url = isCdnAvailable ? await GetCdnUrl() : selectedMirror.value!.url;
       } catch (e) {
         await invoke('error_dialog', {
           title: t('错误'),
@@ -702,7 +869,7 @@ async function install(): Promise<void> {
         speed: 0,
         lowSpeedCount: 0,
       };
-      progressInterval.value = setInterval(() => {
+      progressInterval = setInterval(() => {
         const now = performance.now();
         const time_diff = now - stat.lastTime;
         if (time_diff > 500) {
@@ -714,7 +881,7 @@ async function install(): Promise<void> {
             stat.lowSpeedCount += 1;
           }
 
-          if (!isOversea.value && stat.lowSpeedCount > 10) {
+          if (!isOversea && stat.lowSpeedCount > 10) {
             suggestOffline.value = true;
           }
         }
@@ -742,7 +909,7 @@ async function install(): Promise<void> {
         return;
       } finally {
         unlisten();
-        clearInterval(progressInterval.value);
+        clearInterval(progressInterval);
       }
     }
   }
@@ -851,7 +1018,7 @@ async function install(): Promise<void> {
     percent.value = 55 + payload * 0.44;
   });
   try {
-    if (!await invoke<boolean>('install_package', { sha256: sha256.value, id: id, offlineMode: embedded_is_latest })) {
+    if (!await invoke<boolean>('install_package', { sha256: sha256, id: id, offlineMode: embedded_is_latest })) {
       step.value = 1;
       subStep.value = 0;
       return;
@@ -962,7 +1129,7 @@ onMounted(async () => {
   let patch_data: GenericPatchData;
   try {
     patch_data = await fetchPatchData();
-    isOversea.value = await fetchIsOversea();
+    isOversea = await fetchIsOversea();
   } catch (e) {
     await invoke('error_dialog', {
       title: t('错误'),
@@ -972,7 +1139,7 @@ onMounted(async () => {
     return;
   }
   mirrors.value = patch_data.mirrors;
-  sha256.value = patch_data.sha256;
+  sha256 = patch_data.sha256;
 
   if (!config.skip_self_update) {
     if (await invoke<boolean>('need_self_update')) {

@@ -1,10 +1,17 @@
-type HomaPassportLoginResp = {
+type HomaResp = {
+  retcode: number;
+  message: string;
+}
+
+type HomaPassportOperationResp = {
   retcode: number;
   message: string;
   data?: string;
 };
 
 type HomaPassportLoginReq = { UserName: string; Password: string };
+
+type HomaPassportRegisterReq = { UserName: string; Password: string, VerifyCode: string };
 
 type HomaPassportUserInfo = {
   NormalizedUsername?: string;

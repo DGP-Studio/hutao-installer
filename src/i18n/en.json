@@ -9,9 +9,14 @@
   "更新信息: x": "Update information: {0}",
   "开始": "Start",
   "此离线安装包不是最新版本，是否继续安装？取消以在线安装最新版本": "This offline installation package is not the latest version, do you want to continue installing? Cancel to install the latest version online",
-  "如果你购买了胡桃云 CDN 服务，你可以在这里登录以获取更好的下载体验": "If you have purchased the Snap Hutao Cloud CDN service, you can log in here for a better download experience",
+  "注册": "Register",
+  "以使用胡桃云 CDN 服务获取更好的下载体验": "to use Snap Hutao Cloud CDN service for a better download experience",
   "用户名": "Username",
+  "验证码": "Verification code",
+  "获取": "Get",
+  "获取: x": "Get: {0}",
   "密码": "Password",
+  "胡桃云兑换码": "Snap Hutao Cloud redemption code",
   "跳过": "Skip",
   "返回": "Back",
   "登录": "Login",
@@ -53,5 +58,10 @@
   "旧版本卸载失败，请重试": "Failed to uninstall old version, please try again",
   "请先手动卸载旧版本后再重新部署": "Please manually uninstall the old version before redeploying",
   "部署进度": "Deployment progress",
-  "很快就好……": "Almost done..."
+  "很快就好……": "Almost done...",
+  "请求验证码失败": "Failed to request verification code",
+  "注册失败": "Registration failed",
+  "兑换码使用失败": "Redemption code usage failed",
+  "注册成功，但是x": "Registration successful, but {0}",
+  "登录失败": "Login failed"
 }

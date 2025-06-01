@@ -175,7 +175,10 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             // things which can be run directly
             api::generic_is_oversea,
             api::generic_get_patch,
+            api::homa_request_verify_code,
+            api::homa_register,
             api::homa_login,
+            api::homa_use_redeem_code,
             api::homa_fetch_cdn,
             api::homa_fetch_userinfo,
             installer::error_dialog,
@@ -214,7 +217,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             .resizable(false)
             .maximizable(false)
             .transparent(true)
-            .inner_size(650.0, 350.0)
+                .inner_size(700.0, 400.0)
             .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required")
             .center();
             if !cfg!(debug_assertions) {
