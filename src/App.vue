@@ -95,11 +95,12 @@
               {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
               </span>
             </div>
-            <input v-model="homaUsername" :placeholder="t('用户名')" class="account-input" type="email" />
+            <input v-model="homaUsername" :placeholder="t('邮箱')" class="account-input" type="email" />
             <div class="verify-code-container">
               <input v-model="homaVerifyCode" :placeholder="t('验证码')" class="account-input verify-code-input"
                      type="text" />
-              <button :disabled="verifyCodeCooldown" class="btn btn-req-verify-code" @click="requestVerifyCode">
+              <button :disabled="requestingVerifyCode || verifyCodeCooldown || !emailRegex.test(homaUsername)"
+                      class="btn btn-req-verify-code" @click="requestVerifyCode">
                 <span v-if="!requestingVerifyCode && !verifyCodeCooldown">{{ t('获取') }}</span>
                 <span v-if="requestingVerifyCode" class="fui-Spinner__spinner">
                   <span class="fui-Spinner__spinnerTail" />
@@ -783,7 +784,7 @@ async function requestVerifyCode(): Promise<void> {
   if (homaUsername.value.length === 0) {
     await invoke('error_dialog', {
       title: t('错误'),
-      message: t('请输入用户名'),
+      message: t('请输入邮箱'),
     });
     return;
   }
