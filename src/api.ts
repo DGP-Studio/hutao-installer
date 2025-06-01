@@ -46,7 +46,7 @@ export async function RequestHomaPassportVerifyCode(username: string): Promise<b
   } else if (res.retcode === 544001) {
     await invoke('error_dialog', {
       title: getLocalizedString('请求验证码失败'),
-      message: formatLocalizedString('用户名 x 已被注册', [username]),
+      message: formatLocalizedString('邮箱 x 已被注册', [username]),
     });
     return false;
   } else {
