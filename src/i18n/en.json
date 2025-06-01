@@ -63,6 +63,7 @@
   "很快就好……": "Almost done...",
   "请求验证码失败": "Failed to request verification code",
   "注册失败": "Registration failed",
+  "用户名 x 已被注册": "Username {0} is already registered",
   "兑换码使用失败": "Redemption code usage failed",
   "注册成功，但是x": "Registration successful, but {0}",
   "登录失败": "Login failed"

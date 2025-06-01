@@ -66,7 +66,7 @@
               {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
               </span>
             </div>
-            <input v-model="homaUsername" :placeholder="t('用户名')" class="account-input" type="email" />
+            <input v-model="homaUsername" :placeholder="t('邮箱')" class="account-input" type="email" />
             <input v-model="homaPassword" :placeholder="t('密码')" class="account-input textarea-password"
                    type="password" />
           </div>
