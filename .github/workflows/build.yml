@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      only-offline:
+        type: boolean
+        default: false
+        description: 'Only build offline package and upload'
 env:
   CARGO_TERM_COLOR: always
 jobs:
@@ -112,3 +117,37 @@ jobs:
           token: ${{ secrets.TOKEN }}
           files: |
             src/Snap.Hutao.Deployment.Runtime/Snap.Hutao.Deployment.exe
+  sync-to-quark:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event.inputs.only-offline == 'true') }}
+    strategy:
+      matrix:
+        mode: [ online, offline ]
+    env:
+      BUILD_MODE: ${{ matrix.mode }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deployment-${{ env.BUILD_MODE }}
+          path: ${{ env.BUILD_MODE }}
+      - name: Get upload path
+        id: get-upload-path
+        run: |
+          if [ "${{ env.BUILD_MODE }}" == "online" ]; then
+            echo "FILENAME=online/Snap.Hutao.Deployment.exe" >> $GITHUB_OUTPUT
+            echo "TARGET_DIR=/qk" >> $GITHUB_OUTPUT
+          else
+            echo "FILENAME=$(ls offline/Snap.Hutao.Deployment.Embedded.*.exe)" >> $GITHUB_OUTPUT
+            echo "TARGET_DIR=/qk/离线包" >> $GITHUB_OUTPUT
+          fi
+      - name: upload
+        uses: DGP-Automation/alist-uploader@v1
+        with:
+          file_path: ${{ steps.get-upload-path.outputs.FILENAME }}
+          target_dir: ${{ steps.get-upload-path.outputs.TARGET_DIR }}
+          overwrite: true
+        env:
+          ALIST_HOST: ${{ secrets.ALIST_HOST }}
+          ALIST_USERNAME: ${{ secrets.ALIST_USERNAME }}
+          ALIST_PASSWORD: ${{ secrets.ALIST_PASSWORD }}
