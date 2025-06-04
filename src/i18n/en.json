@@ -41,6 +41,7 @@
   "准备中……": "Preparing...",
   "提取安装包失败，请重试": "Failed to extract installation package, please try again",
   "准备下载……": "Preparing to download...",
+  "错误": "Error",
   "未获取到可用的镜像源，请重试": "No available mirror source found, please try again",
   "下载安装包失败，请重试": "Download installation package failed, please try again",
   "正在检查 MSVC 运行库……": "Checking MSVC runtime...",

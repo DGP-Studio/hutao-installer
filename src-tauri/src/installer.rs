@@ -711,7 +711,11 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
         ));
     }
 
-    let sl = CoCreateInstance::<IShellLink>(&CLSID::ShellLink, None, CLSCTX::INPROC_SERVER);
+    let sl = CoCreateInstance::<IShellLink>(
+        &CLSID::ShellLink,
+        None::<&IShellLink>,
+        CLSCTX::INPROC_SERVER,
+    );
     if sl.is_err() {
         capture_and_return_err_message_string!(format!(
             "Failed to create shell link: {:?}",

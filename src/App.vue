@@ -66,9 +66,10 @@
               {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
               </span>
             </div>
-            <input v-model="homaUsername" :placeholder="t('邮箱')" autocomplete="off" class="account-input"
+            <input v-model="homaUsername" :placeholder="t('邮箱')" aria-autocomplete="none" autocomplete="off"
+                   class="account-input"
                    type="email" />
-            <input v-model="homaPassword" :placeholder="t('密码')" autocomplete="off"
+            <input v-model="homaPassword" :placeholder="t('密码')" aria-autocomplete="none" autocomplete="off"
                    class="account-input textarea-password"
                    type="password" />
           </div>
@@ -98,9 +99,10 @@
               </span>
             </div>
             <input v-model="homaUsername" :placeholder="t('邮箱')" autocomplete="off" class="account-input"
+                   aria-autocomplete="none"
                    type="email" />
             <div class="verify-code-container">
-              <input v-model="homaVerifyCode" :placeholder="t('验证码')" autocomplete="off"
+              <input v-model="homaVerifyCode" :placeholder="t('验证码')" aria-autocomplete="none" autocomplete="off"
                      class="account-input verify-code-input"
                      type="text" />
               <button :disabled="requestingVerifyCode || verifyCodeCooldown || !emailRegex.test(homaUsername)"
@@ -114,10 +116,11 @@
                 </span>
               </button>
             </div>
-            <input v-model="homaPassword" :placeholder="t('密码')" autocomplete="off"
+            <input v-model="homaPassword" :placeholder="t('密码')" aria-autocomplete="none" autocomplete="off"
                    class="account-input textarea-password"
                    type="password" />
             <input v-model="homaRedeemCode" :placeholder="t('胡桃云兑换码')" autocomplete="off" class="account-input"
+                   aria-autocomplete="none"
                    type="text" />
           </div>
           <div class="new-btn-container">
