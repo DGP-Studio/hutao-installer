@@ -220,6 +220,12 @@ pub fn add_package(
 
             process::run(false, "ms-settings:developers", None::<&str>);
             return Ok(false);
+        } else if ex_code == HRESULT(0) {
+            capture_and_return_err!(anyhow::anyhow!(
+                "Failed to add package: {:?}, HResult Last Error: {:?}",
+                err_text,
+                Error::from_win32()
+            ));
         }
 
         capture_and_return_err!(anyhow::anyhow!(
@@ -336,6 +342,14 @@ pub fn remove_package(package_family_name: String) -> Result<(), anyhow::Error> 
             ));
         }
         let extended_error_code = extended_error_code?;
+
+        if extended_error_code == HRESULT(0) {
+            capture_and_return_err!(anyhow::anyhow!(
+                "Failed to remove package: {:?}, HResult Last Error: {:?}",
+                error_text,
+                Error::from_win32()
+            ));
+        }
 
         capture_and_return_err!(anyhow::anyhow!(
             "Failed to remove package: {:?}, HResult Error: {:?}",

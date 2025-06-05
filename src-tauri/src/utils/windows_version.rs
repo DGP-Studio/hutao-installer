@@ -1,5 +1,4 @@
-use crate::capture_and_return_default;
-use crate::utils::Version;
+use crate::{capture_and_return_default, utils::Version};
 use std::str::FromStr;
 use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
