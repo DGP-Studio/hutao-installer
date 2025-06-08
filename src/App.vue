@@ -224,7 +224,8 @@
 
 <style scoped>
 .main {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
 }
 
 .version {
@@ -267,7 +268,8 @@
 
 .content {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   line-height: 1.1;
   text-align: center;
   justify-content: center;
@@ -434,6 +436,7 @@
 .update-info {
   padding-left: 12px;
   display: flex;
+  height: 100%;
   line-height: 1.4;
   font-size: 13px;
   gap: 8px;
@@ -441,9 +444,9 @@
 }
 
 .changelog {
+  flex: 1 1 0;
   overflow-y: auto;
-  margin-left: -24px;
-  height: 140px;
+  margin-left: -20px;
 
   ::v-deep(h3) {
     margin-top: 0;
@@ -489,6 +492,7 @@
 .choose-mirror-desc {
   font-size: 14px;
   display: flex;
+  height: 100%;
   flex-direction: column;
 }
 
@@ -540,12 +544,19 @@
 }
 
 .listview {
-  max-height: 147px;
+  flex: 1 1 0;
   overflow-y: auto;
   padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.listview::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background: transparent;
 }
 
 .listview-item {
