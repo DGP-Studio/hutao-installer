@@ -662,6 +662,7 @@ const version_info = ref<string>('');
 const changelog = ref<string>('');
 let isCdnAvailable = false;
 let isOversea = false;
+let remote_version = '';
 
 // Step 2
 const homaUsername = ref<string>('');
@@ -871,7 +872,7 @@ async function install(): Promise<void> {
     if (!package_exists_and_valid) {
       let mirror_url;
       try {
-        mirror_url = isCdnAvailable ? await GetCdnUrl() : selectedMirror.value!.url;
+        mirror_url = isCdnAvailable ? await GetCdnUrl(`Snap.Hutao.${remote_version}.msix`) : selectedMirror.value!.url;
       } catch (e) {
         await invoke('error_dialog', {
           title: t('错误'),
@@ -1161,6 +1162,7 @@ onMounted(async () => {
   }
   mirrors.value = patch_data.mirrors;
   sha256 = patch_data.sha256;
+  remote_version = Version.parse(patch_data.version).toString();
 
   if (!config.skip_self_update) {
     if (await invoke<boolean>('need_self_update')) {

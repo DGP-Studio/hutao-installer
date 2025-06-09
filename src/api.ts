@@ -140,16 +140,11 @@ export async function IsCdnAvailable(): Promise<boolean> {
   );
 }
 
-export async function GetCdnUrl(): Promise<string> {
+export async function GetCdnUrl(filename: string): Promise<string> {
   if (!cachedToken) {
     throw new Error('Not logged in');
   }
 
-  if (!cachedData) {
-    throw new Error('Patch data not fetched');
-  }
-
-  const filename = cachedData.urls[0].split('/').pop();
   return await invoke<string>('homa_fetch_cdn', {
     token: cachedToken,
     filename: filename,
