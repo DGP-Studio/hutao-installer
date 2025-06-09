@@ -1,4 +1,5 @@
 use crate::{capture_and_return_default, capture_and_return_err, utils::process};
+use windows::Management::Deployment::RemovalOptions;
 use windows::{
     core::{Error, HRESULT, HSTRING},
     Foundation::Uri,
@@ -303,7 +304,8 @@ pub fn remove_package(package_family_name: String) -> Result<(), anyhow::Error> 
     }
     let package_full_name = package_full_name?;
 
-    let op = package_manager.RemovePackageAsync(&package_full_name);
+    let op = package_manager
+        .RemovePackageWithOptionsAsync(&package_full_name, RemovalOptions::RemoveForAllUsers);
     if op.is_err() {
         capture_and_return_err!(anyhow::anyhow!("Failed to remove package: {:?}", op.err()));
     }
