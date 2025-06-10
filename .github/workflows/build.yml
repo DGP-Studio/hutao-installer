@@ -96,6 +96,14 @@ jobs:
         with:
           name: deployment-online
           path: src/Snap.Hutao.Deployment.Runtime
+      - name: Upload to object stores
+        uses: hutao-cdn/upload@v1
+        with:
+          file_path: src/Snap.Hutao.Deployment.Runtime/Snap.Hutao.Deployment.exe
+          key: Snap.Hutao.Deployment.exe
+          post_action: refresh
+        env:
+          SNAP_HUTAO_CDN_TOKEN: ${{ secrets.SNAP_HUTAO_CDN_TOKEN }}
       - name: Update nuspec
         run: |
           $tag = "${{ github.ref_name }}"
