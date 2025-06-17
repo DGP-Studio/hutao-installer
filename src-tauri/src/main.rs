@@ -15,8 +15,8 @@ use module::singleton;
 use reqwest::header::{HeaderMap, HeaderValue};
 use sentry::protocol::Context;
 use std::collections::BTreeMap;
-use tauri::{window::Color, WindowEvent};
-use tauri_utils::{config::WindowEffectsConfig, WindowEffect};
+use tauri::{WindowEvent, window::Color};
+use tauri_utils::{WindowEffect, config::WindowEffectsConfig};
 use utils::{device::get_device_id, windows_version::get_windows_version};
 
 lazy_static::lazy_static! {
@@ -67,7 +67,7 @@ fn hutao_trace_headers() -> HeaderMap {
 }
 
 fn main() {
-    use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+    use windows::Win32::System::Console::{ATTACH_PARENT_PROCESS, AttachConsole};
     let _ = unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
 
     unsafe {
@@ -140,12 +140,14 @@ async fn tauri_main(args: Option<UpdateArgs>) {
     let win_ver = get_windows_version();
     let win10_22h2_ver = Version::new(10, 0, 19045, 5371);
     let win11_ver = Version::new(10, 0, 22000, 0);
-    let win11_22h2_ver = Version::new(10, 0, 22621, 0);
 
-    if win_ver < win10_22h2_ver || (win_ver >= win11_ver && win_ver < win11_22h2_ver) {
+    if win_ver < win10_22h2_ver {
         rfd::MessageDialog::new()
             .set_title("错误")
-            .set_description("不支持的操作系统版本")
+            .set_description(format!(
+                "不支持的操作系统版本\n需要 10.0.19045.5371 及更新版本，当前系统版本: {}",
+                win_ver
+            ))
             .set_level(rfd::MessageLevel::Error)
             .show();
         return;
