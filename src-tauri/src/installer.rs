@@ -1,26 +1,25 @@
 use crate::{
-    capture_and_return_err_message_string,
+    REQUEST_CLIENT, capture_and_return_err_message_string,
     cli::arg::UpdateArgs,
     fs::{create_http_stream, create_target_file, progressed_copy},
     utils::{
+        Version,
         cert::{find_certificate, install_certificate},
         dir::get_desktop,
         hash::run_sha256_file_hash_async,
         package_manager::{add_package, need_migration, remove_package, try_get_hutao_version},
         process::{self, is_process_running, is_process_running_by_pid, wait_for_pid},
-        Version,
     },
-    REQUEST_CLIENT,
 };
 use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use tokio::io::AsyncWriteExt;
-use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 use winsafe::{
+    CoCreateInstance, IPersistFile, IShellLink,
     co::{CLSCTX, CLSID, SW},
     prelude::{ole_IPersistFile, ole_IUnknown, shell_IShellLink},
-    CoCreateInstance, IPersistFile, IShellLink,
 };
 
 #[cfg(feature = "offline")]

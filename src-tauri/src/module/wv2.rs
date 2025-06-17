@@ -1,28 +1,28 @@
 use crate::{
+    REQUEST_CLIENT,
     module::singleton::{self, SingletonState, UserData},
     utils::process::{is_process_running, wait_for_pid},
-    REQUEST_CLIENT,
 };
 use std::ptr::null_mut;
 use tauri::Wry;
 use windows::{
-    core::{HRESULT, PCWSTR},
     Win32::{
         Foundation::{HWND, LPARAM, S_OK, WPARAM},
         System::LibraryLoader::GetModuleHandleW,
         UI::{
             Controls::{
-                TaskDialogIndirect, TASKDIALOGCONFIG, TASKDIALOGCONFIG_0, TASKDIALOG_NOTIFICATIONS,
+                TASKDIALOG_NOTIFICATIONS, TASKDIALOGCONFIG, TASKDIALOGCONFIG_0,
                 TDCBF_CANCEL_BUTTON, TDE_CONTENT, TDF_SHOW_MARQUEE_PROGRESS_BAR,
                 TDF_USE_HICON_MAIN, TDM_ENABLE_BUTTON, TDM_SET_PROGRESS_BAR_MARQUEE,
-                TDM_UPDATE_ELEMENT_TEXT, TDN_CREATED, TDN_DESTROYED,
+                TDM_UPDATE_ELEMENT_TEXT, TDN_CREATED, TDN_DESTROYED, TaskDialogIndirect,
             },
             WindowsAndMessaging::{
-                LoadIconW, SendMessageW, SetProcessDPIAware, HICON, IDCANCEL, IDI_APPLICATION,
+                HICON, IDCANCEL, IDI_APPLICATION, LoadIconW, SendMessageW, SetProcessDPIAware,
                 WM_CLOSE,
             },
         },
     },
+    core::{HRESULT, PCWSTR},
 };
 
 pub struct TaskDialogState {

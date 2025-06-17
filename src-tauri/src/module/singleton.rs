@@ -1,12 +1,11 @@
 use tauri::{
-    plugin::{self, TauriPlugin},
     AppHandle, Manager, RunEvent, Runtime,
+    plugin::{self, TauriPlugin},
 };
 use windows::{
-    core::PCWSTR,
     Win32::{
         Foundation::{
-            CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HANDLE, HINSTANCE, HWND, LPARAM,
+            CloseHandle, ERROR_ALREADY_EXISTS, GetLastError, HANDLE, HINSTANCE, HWND, LPARAM,
             LRESULT, WPARAM,
         },
         Graphics::Gdi::HBRUSH,
@@ -17,16 +16,17 @@ use windows::{
         UI::{
             Input::KeyboardAndMouse::SetFocus,
             WindowsAndMessaging::{
-                CreateWindowExW, DefWindowProcW, DestroyWindow, FindWindowW, GetWindowLongPtrW,
-                GetWindowThreadProcessId, IsIconic, IsWindowVisible, RegisterClassExW,
-                SendMessageW, SetForegroundWindow, SetWindowLongPtrW, ShowWindow, CREATESTRUCTW,
-                GWLP_USERDATA, GWL_STYLE, HCURSOR, HICON, SW_RESTORE, SW_SHOW, WM_COPYDATA,
-                WM_CREATE, WM_DESTROY, WNDCLASSEXW, WNDCLASS_STYLES, WS_EX_LAYERED,
+                CREATESTRUCTW, CreateWindowExW, DefWindowProcW, DestroyWindow, FindWindowW,
+                GWL_STYLE, GWLP_USERDATA, GetWindowLongPtrW, GetWindowThreadProcessId, HCURSOR,
+                HICON, IsIconic, IsWindowVisible, RegisterClassExW, SW_RESTORE, SW_SHOW,
+                SendMessageW, SetForegroundWindow, SetWindowLongPtrW, ShowWindow, WM_COPYDATA,
+                WM_CREATE, WM_DESTROY, WNDCLASS_STYLES, WNDCLASSEXW, WS_EX_LAYERED,
                 WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_OVERLAPPED, WS_POPUP,
                 WS_VISIBLE,
             },
         },
     },
+    core::PCWSTR,
 };
 
 const WMCOPYDATA_SINGLE_INSTANCE_DATA: usize = 1542;

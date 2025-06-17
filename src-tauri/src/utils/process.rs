@@ -1,30 +1,30 @@
 use crate::{capture_and_return_err, capture_and_return_err_message_string};
 use std::{ffi::OsStr, os::windows::process::ExitStatusExt, process::ExitStatus};
 use windows::{
-    core::{w, HSTRING, PCWSTR, PWSTR},
     Win32::{
         Foundation::{CloseHandle, WAIT_EVENT, WAIT_OBJECT_0},
         System::{
             Diagnostics::ToolHelp::{
-                CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+                CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
                 TH32CS_SNAPPROCESS,
             },
             Threading::{
-                GetExitCodeProcess, OpenProcess, QueryFullProcessImageNameW, INFINITE,
-                PROCESS_NAME_FORMAT, PROCESS_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION,
-                PROCESS_SYNCHRONIZE,
+                GetExitCodeProcess, INFINITE, OpenProcess, PROCESS_NAME_FORMAT,
+                PROCESS_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+                QueryFullProcessImageNameW,
             },
         },
         UI::{
             Shell::{
-                ShellExecuteExW, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+                SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW,
             },
             WindowsAndMessaging::{
-                DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage,
-                PM_REMOVE, QS_ALLINPUT,
+                DispatchMessageW, MsgWaitForMultipleObjects, PM_REMOVE, PeekMessageW, QS_ALLINPUT,
+                TranslateMessage,
             },
         },
     },
+    core::{HSTRING, PCWSTR, PWSTR, w},
 };
 
 pub fn run<S: AsRef<OsStr>, T: AsRef<OsStr>>(elevated: bool, program_path: S, args: Option<T>) {
