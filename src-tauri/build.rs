@@ -5,8 +5,8 @@ fn main() {
         panic!("offline mode requires EMBEDDED_VERSION to be set");
     }
 
-    println!("cargo:rustc-env=BUILD_MODE={}", build_mode);
-    println!("cargo:rustc-env=EMBEDDED_VERSION={}", embedded_version);
+    println!("cargo:rustc-env=BUILD_MODE={build_mode}");
+    println!("cargo:rustc-env=EMBEDDED_VERSION={embedded_version}");
 
     let windows = tauri_build::WindowsAttributes::new().app_manifest(
         r#"

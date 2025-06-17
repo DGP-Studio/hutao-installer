@@ -20,7 +20,7 @@ impl Cli {
             Command::Install => "install".to_string(),
             Command::Update(args) => {
                 if let Some(token) = args.token {
-                    format!("update {}", token)
+                    format!("update {token}")
                 } else {
                     "update".to_string()
                 }

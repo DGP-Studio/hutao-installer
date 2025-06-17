@@ -175,14 +175,14 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 pub async fn open_browser(url: String) -> Result<(), String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
-        message: Some(format!("Opening browser: {}", url)),
+        message: Some(format!("Opening browser: {url}")),
         level: sentry::Level::Info,
         ..Default::default()
     });
     if webbrowser::open(&url).is_ok() {
         Ok(())
     } else {
-        Err(format!("Failed to open browser: {:?}", url))
+        Err(format!("Failed to open browser: {url:?}"))
     }
 }
 
@@ -215,8 +215,7 @@ pub async fn get_config<R: Runtime>(
     let exists = try_get_hutao_version();
 
     let update_args = args.inner().clone();
-    if update_args.is_some() {
-        let update_args = update_args.unwrap();
+    if let Some(update_args) = update_args {
         return Ok(Config {
             version: curr_ver.to_string(),
             is_update: true,
@@ -245,14 +244,11 @@ pub async fn get_config<R: Runtime>(
 pub async fn get_changelog(lang: String, from: String) -> Result<String, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
-        message: Some(format!("Getting {} changelog: {}", lang, from)),
+        message: Some(format!("Getting {lang} changelog: {from}")),
         level: sentry::Level::Info,
         ..Default::default()
     });
-    let url = format!(
-        "https://api.qhy04.com/hutaocdn/changelog?lang={}&from={}",
-        lang, from
-    );
+    let url = format!("https://api.qhy04.com/hutaocdn/changelog?lang={lang}&from={from}");
     let res = REQUEST_CLIENT.get(&url).send().await;
     if res.is_err() {
         return Err(format!("Failed to send http request: {:?}", res.err()));
@@ -369,7 +365,7 @@ pub async fn download_package(
 ) -> Result<(), String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
-        message: Some(format!("Downloading package from {}", mirror_url)),
+        message: Some(format!("Downloading package from {mirror_url}")),
         level: sentry::Level::Info,
         ..Default::default()
     });
@@ -580,7 +576,7 @@ pub async fn is_hutao_running() -> Result<(bool, Option<u32>), String> {
 pub async fn kill_process(pid: u32) -> Result<(), String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
-        message: Some(format!("Killing process {}", pid)),
+        message: Some(format!("Killing process {pid}")),
         level: sentry::Level::Info,
         ..Default::default()
     });
@@ -698,7 +694,7 @@ pub async fn create_desktop_lnk() -> Result<(), String> {
     });
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
     let desktop = get_desktop().unwrap();
-    let lnk = format!(r#"{}\Snap Hutao.lnk"#, desktop);
+    let lnk = format!(r#"{desktop}\Snap Hutao.lnk"#);
 
     let desktop_path = Path::new(&desktop);
 

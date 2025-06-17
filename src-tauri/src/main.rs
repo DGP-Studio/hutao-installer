@@ -145,8 +145,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         rfd::MessageDialog::new()
             .set_title("错误")
             .set_description(format!(
-                "不支持的操作系统版本\n需要 10.0.19045.5371 及更新版本，当前系统版本: {}",
-                win_ver
+                "不支持的操作系统版本\n需要 10.0.19045.5371 及更新版本，当前系统版本: {win_ver}"
             ))
             .set_level(rfd::MessageLevel::Error)
             .show();

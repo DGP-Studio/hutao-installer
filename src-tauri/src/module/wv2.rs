@@ -157,7 +157,7 @@ pub async fn install_webview2(command: String) {
             unsafe {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
-            error_dialog(format!("WebView2 运行时下载失败: {}", e));
+            error_dialog(format!("WebView2 运行时下载失败: {e}"));
             exit_and_release_mutex(0, &singleton_state);
             return;
         }
@@ -169,7 +169,7 @@ pub async fn install_webview2(command: String) {
             unsafe {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
-            error_dialog(format!("WebView2 运行时下载失败: {}", e));
+            error_dialog(format!("WebView2 运行时下载失败: {e}"));
             exit_and_release_mutex(0, &singleton_state);
             return;
         }
@@ -181,7 +181,7 @@ pub async fn install_webview2(command: String) {
             unsafe {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
-            error_dialog(format!("WebView2 运行时安装程序写入失败: {}", e));
+            error_dialog(format!("WebView2 运行时安装程序写入失败: {e}"));
             exit_and_release_mutex(0, &singleton_state);
             return;
         }
@@ -237,7 +237,7 @@ pub async fn install_webview2(command: String) {
         unsafe {
             SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
         }
-        error_dialog(format!("WebView2 运行时安装失败: {}", e));
+        error_dialog(format!("WebView2 运行时安装失败: {e}"));
         exit_and_release_mutex(0, &singleton_state);
         return;
     }

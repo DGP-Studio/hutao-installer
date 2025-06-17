@@ -263,7 +263,7 @@ pub async fn homa_use_redeem_code(token: String, code: String) -> Result<HomaRes
     let url = "https://homa.snapgenshin.com/Redeem/Use";
     let resp = REQUEST_CLIENT
         .post(url)
-        .header("Authorization", &format!("Bearer {}", token))
+        .header("Authorization", &format!("Bearer {token}"))
         .json(&serde_json::json!({ "code": code }))
         .send()
         .await;
@@ -289,7 +289,7 @@ pub async fn homa_fetch_userinfo(token: String) -> Result<HomaPassportUserInfo, 
     let url = "https://homa.snapgenshin.com/Passport/UserInfo";
     let resp = REQUEST_CLIENT
         .get(url)
-        .header("Authorization", &format!("Bearer {}", token))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await;
     if resp.is_err() {
@@ -316,12 +316,11 @@ pub async fn homa_fetch_cdn(token: String, filename: String) -> Result<String, S
         ..Default::default()
     });
     let url = format!(
-        "https://homa.snapgenshin.com/Distribution/GetAcceleratedMirror?Filename={}",
-        filename
+        "https://homa.snapgenshin.com/Distribution/GetAcceleratedMirror?Filename={filename}"
     );
     let resp = REQUEST_CLIENT
         .get(&url)
-        .header("Authorization", &format!("Bearer {}", token))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await;
     if resp.is_err() {
