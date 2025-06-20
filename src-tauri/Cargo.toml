@@ -97,4 +97,4 @@ opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
 panic = "abort"   # Higher performance by disabling panic handlers.
 strip = true      # Ensures debug symbols are removed.
 trim-paths = "all" # Removes potentially privileged information from your binaries.Add commentMore actions
-rustflags = ["-Cdebuginfo=0", "-Zthreads=8"] # Better compile performance.
+rustflags = ["-Zthreads=8"] # Better compile performance.
