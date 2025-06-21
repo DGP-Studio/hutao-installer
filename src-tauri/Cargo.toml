@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags", "trim-paths"]
 [package]
 name = "hutao-installer"
-version = "2.4.6"
+version = "2.4.7"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
