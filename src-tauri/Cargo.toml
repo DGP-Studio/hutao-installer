@@ -1,7 +1,7 @@
-cargo-features = ["profile-rustflags", "trim-paths"]
+cargo-features = ["profile-rustflags"]
 [package]
 name = "hutao-installer"
-version = "2.4.7"
+version = "2.4.8"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
@@ -96,5 +96,4 @@ lto = true        # Enables link-time-optimizations.
 opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
 panic = "abort"   # Higher performance by disabling panic handlers.
 strip = true      # Ensures debug symbols are removed.
-trim-paths = "all" # Removes potentially privileged information from your binaries.Add commentMore actions
 rustflags = ["-Zthreads=8"] # Better compile performance.
