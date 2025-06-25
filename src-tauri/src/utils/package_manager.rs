@@ -1,11 +1,63 @@
-use crate::{capture_and_return_default, capture_and_return_err, utils::process};
+use crate::{
+    capture_and_return, capture_and_return_default, capture_and_return_err, utils::process,
+};
 use windows::Management::Deployment::RemovalOptions;
 use windows::{
-    core::{Error, HRESULT, HSTRING},
     Foundation::Uri,
     Management::Deployment::{AddPackageOptions, DeploymentProgress, PackageManager},
+    core::{Error, HRESULT, HSTRING},
 };
 use windows_future::AsyncStatus;
+
+pub fn check() {
+    let package_manager = PackageManager::new();
+    if package_manager.is_err() {
+        capture_and_return!(anyhow::anyhow!(
+            "Failed to create package manager: {:?}",
+            package_manager.err()
+        ));
+    }
+
+    let package_manager = package_manager.unwrap();
+
+    let default_volume = package_manager.GetDefaultPackageVolume();
+    if default_volume.is_err() {
+        capture_and_return!(anyhow::anyhow!(
+            "Failed to get default package volume: {:?}",
+            default_volume.err()
+        ));
+    }
+
+    let default_volume = default_volume.unwrap();
+
+    let is_appx_supported = default_volume.IsAppxInstallSupported();
+    if is_appx_supported.is_err() {
+        capture_and_return!(anyhow::anyhow!(
+            "Failed to check if Appx install is supported: {:?}",
+            is_appx_supported.err()
+        ));
+    }
+
+    let is_appx_supported = is_appx_supported.unwrap();
+
+    let is_full_trust_supported = default_volume.IsFullTrustPackageSupported();
+    if is_full_trust_supported.is_err() {
+        capture_and_return!(anyhow::anyhow!(
+            "Failed to check if full trust package is supported: {:?}",
+            is_full_trust_supported.err()
+        ));
+    }
+
+    let is_full_trust_supported = is_full_trust_supported.unwrap();
+
+    if !is_appx_supported || !is_full_trust_supported {
+        rfd::MessageDialog::new()
+            .set_title("警告")
+            .set_description("当前系统不支持 Appx 包安装，继续安装可能会引发错误。")
+            .set_level(rfd::MessageLevel::Warning)
+            .show();
+    }
+}
 
 pub fn need_migration() -> bool {
     let package_manager = PackageManager::new();

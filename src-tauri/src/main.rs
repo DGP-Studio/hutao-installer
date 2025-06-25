@@ -8,7 +8,7 @@ pub mod installer;
 pub mod module;
 pub mod utils;
 
-use crate::utils::Version;
+use crate::utils::{Version, package_manager};
 use clap::Parser;
 use cli::arg::{Command, UpdateArgs};
 use module::singleton;
@@ -151,6 +151,9 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             .show();
         return;
     }
+
+    package_manager::check();
+
     // use 22000 as the build number of Windows 11
     let is_win11 = win_ver >= win11_ver;
     let is_win11_ = is_win11;
