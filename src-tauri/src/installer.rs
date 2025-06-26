@@ -407,13 +407,22 @@ pub async fn check_vcrt() -> Result<bool, String> {
         ..Default::default()
     });
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let path = r#"SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"#.to_string();
-    let key = hklm.open_subkey(&path);
-    if let Ok(key) = key {
-        if let Ok(installed) = key.get_value::<u32, _>("Installed") {
-            return Ok(installed == 1);
+    let x64_path = r#"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"#.to_string();
+    let x86_path =
+        r#"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"#.to_string();
+    let x64_key = hklm.open_subkey(&x64_path);
+    let x86_key = hklm.open_subkey(&x86_path);
+
+    if let Ok(key) = x64_key {
+        if let Ok(x64_installed) = key.get_value::<u32, _>("Installed") {
+            if let Ok(key) = x86_key {
+                if let Ok(x86_installed) = key.get_value::<u32, _>("Installed") {
+                    return Ok(x64_installed == 1 && x86_installed == 1);
+                }
+            }
         }
     }
+
     Ok(false)
 }
 
@@ -506,7 +515,8 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
         ));
     }
     let status = status.unwrap();
-    if !status.success() && status.code().unwrap() != 3010 {
+    let code = status.code().unwrap();
+    if !status.success() && code != 1638 && code != 3010 {
         capture_and_return_err_message_string!(format!("VCRT installer failed: {:?}", status));
     }
     let _ = tokio::fs::remove_file(installer_path).await;
