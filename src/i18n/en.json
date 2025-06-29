@@ -23,6 +23,7 @@
   "选择一个镜像源": "Choose a mirror source",
   "已购买胡桃云 CDN？": "Purchased Snap Hutao Cloud CDN service?",
   "测速中": "Testing speed",
+  "跳转到浏览器": "Redirect to browser",
   "更新": "Update",
   "安装": "Install",
   "下载很慢？试试离线包": "Is the download slow? Try the offline package",
@@ -67,5 +68,6 @@
   "邮箱 x 已被注册": "Email {0} is already registered",
   "兑换码使用失败": "Redemption code usage failed",
   "注册成功，但是x": "Registration successful, but {0}",
-  "登录失败": "Login failed"
+  "登录失败": "Login failed",
+  "夸克网盘": "Quark Cloud"
 }

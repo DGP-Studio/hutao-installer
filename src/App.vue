@@ -154,11 +154,13 @@
                   <span>{{ item.mirror_name }}</span>
                   <span>
                     {{
-                      item.speed == null
-                        ? t('测速中')
-                        : item.speed == -1
-                          ? 'timeout'
-                          : `${item.speed?.toFixed(2)} MB/s`
+                      item.mirror_type == 'browser'
+                        ? ''
+                        : item.speed == null
+                          ? t('测速中')
+                          : item.speed == -1
+                            ? 'timeout'
+                            : `${item.speed?.toFixed(2)} MB/s`
                     }}
                   </span>
                 </div>
@@ -166,7 +168,11 @@
             </div>
           </div>
           <div class="new-btn-container">
-            <button :disabled="!selectedMirror" class="btn new-btn" @click="install">
+            <button v-if="selectedMirror?.mirror_type == 'browser'" :disabled="!selectedMirror" class="btn new-btn"
+                    @click="openBrowserMirror">
+              {{ t('跳转到浏览器') }}
+            </button>
+            <button v-else :disabled="!selectedMirror" class="btn new-btn" @click="install">
               {{ CONFIG.is_update ? t('更新') : t('安装') }}
             </button>
           </div>
@@ -690,6 +696,7 @@ const verifyCodeCountdown = ref<number>(0);
 const registering = ref<boolean>(false);
 
 // Intervals
+let headingPackageInterval = 0;
 let progressInterval = 0;
 let verifyCodeInterval = 0;
 
@@ -848,7 +855,11 @@ async function goToRegister(): Promise<void> {
 }
 
 async function openOfflineDownloadPage(): Promise<void> {
-  await invoke('open_browser', { url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share' });
+  await invoke('open_browser', { url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share/1e5419a0b7554f98a9b218cf4d735f4b-%E8%83%A1%E6%A1%83/e4be2335e57d4328b8caeb54aaff08e6-%E7%A6%BB%E7%BA%BF%E5%8C%85' });
+}
+
+async function openBrowserMirror(): Promise<void> {
+  await invoke('open_browser', { url: selectedMirror.value?.url });
 }
 
 async function install(): Promise<void> {
@@ -882,6 +893,13 @@ async function install(): Promise<void> {
         return;
       }
       let total_downloaded_size = 0;
+      headingPackageInterval = setInterval(() => {
+        if (!isOversea) {
+          suggestOffline.value = true;
+        }
+
+        clearInterval(headingPackageInterval);
+      }, 5000);
       const total_size = await invoke<number>('head_package', {
         mirrorUrl: mirror_url,
       });
@@ -899,7 +917,7 @@ async function install(): Promise<void> {
           stat.speedLastSize = total_downloaded_size;
           stat.lastTime = now;
 
-          if ((stat.speed * 1000) < (100 * 1000)) {
+          if ((stat.speed * 1000) < (800 * 1000)) {
             stat.lowSpeedCount += 1;
           }
 
@@ -910,9 +928,7 @@ async function install(): Promise<void> {
         const speed = formatSize(stat.speed * 1000);
         const downloaded = formatSize(total_downloaded_size);
         const total = formatSize(total_size);
-        current.value = `
-        <span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>
-      `;
+        current.value = `<span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>`;
         percent.value = (total_downloaded_size / total_size) * 45;
       }, 30);
 
@@ -1098,6 +1114,9 @@ function onItemClick(item: GenericPatchPackageMirror): void {
 async function testMirrorSpeed(): Promise<void> {
   const testers = [];
   for (const mirror of mirrors.value) {
+    if (mirror.mirror_type != 'direct') {
+      continue;
+    }
     mirror.speed = null;
     testers.push(
       invoke<number>('speedtest_5mb', { url: mirror.url }).then(
@@ -1193,6 +1212,15 @@ onMounted(async () => {
     if (remote.compare(embed_ver) <= 0) {
       embedded_is_latest = true;
     }
+  }
+
+  if (!isOversea) {
+    mirrors.value.push({
+      url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share/1e5419a0b7554f98a9b218cf4d735f4b-%E8%83%A1%E6%A1%83/e4be2335e57d4328b8caeb54aaff08e6-%E7%A6%BB%E7%BA%BF%E5%8C%85',
+      mirror_name: t('夸克网盘'),
+      mirror_type: 'browser',
+      speed: 0,
+    });
   }
 
   if (config.is_update && config.curr_version) {
