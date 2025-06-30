@@ -63,7 +63,9 @@
                 {{ t('登录') }}
               /
               <a @click="goToRegister">{{ t('注册') }}</a>
-              {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
+              {{ t('以使用') }}
+              <a @click="openAfdianPage">{{ t('胡桃云 CDN 服务') }}</a>
+              {{ t('获取更好的下载体验') }}
               </span>
             </div>
             <input v-model="homaUsername" :placeholder="t('邮箱')" aria-autocomplete="none" autocomplete="off"
@@ -95,7 +97,9 @@
                <a @click="gotoLogin"> {{ t('登录') }}</a>
               /
               {{ t('注册') }}
-              {{ t('以使用胡桃云 CDN 服务获取更好的下载体验') }}
+              {{ t('以使用') }}
+              <a @click="openAfdianPage">{{ t('胡桃云 CDN 服务') }}</a>
+              {{ t('获取更好的下载体验') }}
               </span>
             </div>
             <input v-model="homaUsername" :placeholder="t('邮箱')" autocomplete="off" class="account-input"
@@ -852,6 +856,10 @@ async function goToRegister(): Promise<void> {
   verifyCodeCountdown.value = 0;
   clearInterval(verifyCodeInterval);
   step.value = 7;
+}
+
+async function openAfdianPage(): Promise<void> {
+  await invoke('open_browser', { url: 'https://afdian.com/item/274f5a7cbe9911efab6552540025c377' });
 }
 
 async function openOfflineDownloadPage(): Promise<void> {
