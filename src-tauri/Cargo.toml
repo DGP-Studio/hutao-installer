@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags"]
 [package]
 name = "hutao-installer"
-version = "2.4.12"
+version = "2.4.13"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
@@ -75,7 +75,7 @@ winreg = "0.55"
 futures = "0.3"
 whoami = "1"
 chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
-winsafe = { version = "0.0.24", features = ["shell"] }
+winsafe = { version = "0.0.25", features = ["shell"] }
 sentry = "0.41"
 sentry-anyhow = "0.41"
 anyhow = "1"
