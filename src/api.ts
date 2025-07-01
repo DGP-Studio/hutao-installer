@@ -120,8 +120,22 @@ export async function LoginHomaPassport(
   return false;
 }
 
+export async function IsLoggedIn(): Promise<boolean> {
+  return !!cachedToken;
+}
+
+export async function Logout(): Promise<void> {
+  cachedToken = null;
+}
+
 export async function LoadToken(token: string): Promise<void> {
   cachedToken = token;
+}
+
+export async function GetUserInfo(): Promise<HomaPassportUserInfo> {
+  return await invoke<HomaPassportUserInfo>('homa_fetch_userinfo', {
+    token: cachedToken,
+  });
 }
 
 export async function IsCdnAvailable(): Promise<boolean> {

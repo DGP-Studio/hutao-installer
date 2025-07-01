@@ -74,6 +74,55 @@ pub async fn message_dialog(title: String, message: String, window: WebviewWindo
 }
 
 #[tauri::command]
+pub async fn two_btn_custom_dialog(
+    title: String,
+    message: String,
+    ok: String,
+    cancel: String,
+    window: WebviewWindow,
+) -> bool {
+    let ret = rfd::MessageDialog::new()
+        .set_title(&title)
+        .set_description(&message)
+        .set_level(rfd::MessageLevel::Info)
+        .set_parent(&window)
+        .set_buttons(rfd::MessageButtons::OkCancelCustom(
+            ok.clone(),
+            cancel.clone(),
+        ))
+        .show();
+
+    ret == rfd::MessageDialogResult::Custom(ok)
+}
+
+#[tauri::command]
+pub async fn three_btn_custom_dialog(
+    title: String,
+    message: String,
+    yes: String,
+    no: String,
+    cancel: String,
+    window: WebviewWindow,
+) -> (bool, bool) {
+    let ret = rfd::MessageDialog::new()
+        .set_title(&title)
+        .set_description(&message)
+        .set_level(rfd::MessageLevel::Info)
+        .set_parent(&window)
+        .set_buttons(rfd::MessageButtons::YesNoCancelCustom(
+            yes.clone(),
+            no.clone(),
+            cancel.clone(),
+        ))
+        .show();
+
+    (
+        ret == rfd::MessageDialogResult::Custom(yes),
+        ret == rfd::MessageDialogResult::Custom(no),
+    )
+}
+
+#[tauri::command]
 pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),

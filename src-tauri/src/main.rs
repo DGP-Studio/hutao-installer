@@ -173,6 +173,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             res.err()
         ));
     }
+
     tauri::Builder::default()
         .plugin(singleton::init_as_plugin())
         .invoke_handler(tauri::generate_handler![
@@ -188,6 +189,8 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::error_dialog,
             installer::confirm_dialog,
             installer::message_dialog,
+            installer::two_btn_custom_dialog,
+            installer::three_btn_custom_dialog,
             installer::need_self_update,
             installer::self_update,
             installer::get_config,

@@ -148,7 +148,7 @@
           <div class="choose-mirror-desc">
             <div class="desc">
               {{ t('选择一个镜像源') }}
-              <a @click="gotoLogin"> {{ t('已购买胡桃云 CDN？') }} </a>
+              <a @click="checkCdnPermission"> {{ t('已购买胡桃云 CDN？') }} </a>
             </div>
             <div class="listview">
               <div v-for="(item, index) in mirrors" :key="index" class="listview-item"
@@ -172,12 +172,20 @@
             </div>
           </div>
           <div class="new-btn-container">
-            <button v-if="selectedMirror?.mirror_type == 'browser'" :disabled="!selectedMirror" class="btn new-btn"
+            <button v-if="selectedMirror?.mirror_type == 'browser'" :disabled="!selectedMirror || checking"
+                    class="btn new-btn"
                     @click="openBrowserMirror">
-              {{ t('跳转到浏览器') }}
+              <span v-if="checking" class="fui-Spinner__spinner">
+                <span class="fui-Spinner__spinnerTail" />
+              </span>
+              <span v-else>{{ t('跳转到浏览器') }}</span>
             </button>
-            <button v-else :disabled="!selectedMirror" class="btn new-btn" @click="install">
-              {{ CONFIG.is_update ? t('更新') : t('安装') }}
+            <button v-else :disabled="!selectedMirror || checking" class="btn new-btn" @click="install">
+              <span v-if="checking" class="fui-Spinner__spinner">
+                <span class="fui-Spinner__spinnerTail" />
+              </span>
+              <span v-else>{{ CONFIG.is_update ? t('更新') : t('安装') }}</span>
+
             </button>
           </div>
         </div>
@@ -629,9 +637,12 @@ import {
   fetchIsOversea,
   fetchPatchData,
   GetCdnUrl,
+  GetUserInfo,
   IsCdnAvailable,
+  IsLoggedIn,
   LoadToken,
   LoginHomaPassport,
+  Logout,
   RegisterHomaPassportAndUseRedeemCode,
   RequestHomaPassportVerifyCode,
 } from './api';
@@ -682,6 +693,7 @@ const logging_in = ref<boolean>(false);
 // Step 3
 const mirrors = ref<GenericPatchPackageMirror[]>([]);
 const selectedMirror = ref<GenericPatchPackageMirror | null>(null);
+const checking = ref<boolean>(false);
 
 // Step 4
 const current = ref<string>('');
@@ -770,6 +782,36 @@ async function start(): Promise<void> {
   starting.value = false;
 }
 
+async function checkCdnPermission(): Promise<void> {
+  checking.value = true;
+  if (await IsLoggedIn()) {
+    if (await IsCdnAvailable()) {
+      isCdnAvailable = true;
+      await install();
+    } else {
+      const userInfo = await GetUserInfo();
+      const action = await invoke<[boolean, boolean]>('three_btn_custom_dialog', {
+        title: t('无 CDN 权限'),
+        message: t('当前登录账号x未检测到有效 CDN 权限', [userInfo.UserName]),
+        yes: t('前往赞助页面'),
+        no: t('退出当前账号'),
+        cancel: t('取消'),
+      });
+
+      if (action[0]) {
+        await openAfdianPage();
+      } else if (action[1]) {
+        isCdnAvailable = false;
+        await Logout();
+        step.value = 2;
+      }
+    }
+  } else {
+    step.value = 2;
+  }
+  checking.value = false;
+}
+
 async function gotoLogin(): Promise<void> {
   step.value = 2;
 }
@@ -778,19 +820,30 @@ async function login(): Promise<void> {
   logging_in.value = true;
   if (!(await LoginHomaPassport(homaUsername.value, homaPassword.value))) {
     logging_in.value = false;
+    homaPassword.value = '';
     return;
   }
   if (await IsCdnAvailable()) {
     isCdnAvailable = true;
     await install();
   } else {
-    await invoke('message_dialog', {
+    const open_afdian_page_action = await invoke<boolean>('two_btn_custom_dialog', {
       title: t('无 CDN 权限'),
-      message: t('未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包'),
+      message: t('未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包，或前往赞助页面获取 CDN 权限'),
+      ok: t('前往赞助页面'),
+      cancel: t('选择镜像源'),
     });
-    step.value = 3;
+    if (open_afdian_page_action) {
+      await openAfdianPage();
+      logging_in.value = false;
+      return;
+    } else {
+      step.value = 3;
+    }
   }
   logging_in.value = false;
+  homaUsername.value = '';
+  homaPassword.value = '';
 }
 
 async function register(): Promise<void> {
@@ -803,13 +856,29 @@ async function register(): Promise<void> {
     isCdnAvailable = true;
     await install();
   } else {
-    await invoke('message_dialog', {
+    const open_afdian_page_action = await invoke<boolean>('two_btn_custom_dialog', {
       title: t('无 CDN 权限'),
-      message: t('未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包'),
+      message: t('当前兑换码为抽卡记录兑换码，未检测到有效 CDN 权限，请选择一个镜像源进行下载安装包，或前往赞助页面获取 CDN 权限'),
+      ok: t('前往赞助页面'),
+      cancel: t('选择镜像源'),
     });
-    step.value = 3;
+
+    if (open_afdian_page_action) {
+      await openAfdianPage();
+      registering.value = false;
+      homaVerifyCode.value = '';
+      homaRedeemCode.value = '';
+      await gotoLogin();
+      return;
+    } else {
+      step.value = 3;
+    }
   }
   registering.value = false;
+  homaUsername.value = '';
+  homaPassword.value = '';
+  homaVerifyCode.value = '';
+  homaRedeemCode.value = '';
 }
 
 async function requestVerifyCode(): Promise<void> {
@@ -848,6 +917,10 @@ async function requestVerifyCode(): Promise<void> {
 }
 
 async function loginSkip(): Promise<void> {
+  homaUsername.value = '';
+  homaPassword.value = '';
+  homaVerifyCode.value = '';
+  homaRedeemCode.value = '';
   step.value = 3;
 }
 
