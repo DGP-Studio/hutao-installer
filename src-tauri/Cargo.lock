@@ -4013,10 +4013,10 @@ version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1375ba8ef45a6f15d83fa8748f1079428295d403d6ea991d09ab100155fbc06d"
 dependencies = [
-    "dyn-clone",
-    "ref-cast",
-    "serde",
-    "serde_json",
+ "dyn-clone",
+ "ref-cast",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4317,7 +4317,7 @@ dependencies = [
  "indexmap 1.9.3",
  "indexmap 2.10.0",
  "schemars 0.9.0",
-    "schemars 1.0.3",
+ "schemars 1.0.3",
  "serde",
  "serde_derive",
  "serde_json",

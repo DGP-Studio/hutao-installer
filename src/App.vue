@@ -991,6 +991,7 @@ async function install(): Promise<void> {
         lowSpeedCount: 0,
       };
       progressInterval = setInterval(() => {
+        clearInterval(headingPackageInterval);
         const now = performance.now();
         const time_diff = now - stat.lastTime;
         if (time_diff > 500) {
