@@ -1011,7 +1011,7 @@ async function install(): Promise<void> {
         const downloaded = formatSize(total_downloaded_size);
         const total = formatSize(total_size);
         current.value = `<span class="d-single-stat">${downloaded} / ${total} (${speed}/s)</span>`;
-        percent.value = (total_downloaded_size / total_size) * 45;
+        percent.value = (total_downloaded_size / total_size) * 40;
       }, 30);
 
       let id = uuid();
@@ -1033,7 +1033,8 @@ async function install(): Promise<void> {
       }
     }
   }
-  percent.value = 45;
+  percent.value = 40;
+
   subStep.value = 1;
   current.value = t('正在检查 MSVC 运行库……');
   let is_vcrt_installed = await invoke<boolean>('check_vcrt');
@@ -1064,7 +1065,8 @@ async function install(): Promise<void> {
       unlisten();
     }
   }
-  percent.value = 50;
+  percent.value = 45;
+
   current.value = t('正在检查 GlobalSign Code Signing Root R45 证书……');
   try {
     await invoke('check_globalsign_r45');
@@ -1076,7 +1078,25 @@ async function install(): Promise<void> {
     step.value = 1;
     return;
   }
+  percent.value = 50;
+
+  current.value = t('正在检查 Segoe Fluent Icons 字体……');
+  let is_segoe_fluent_icons_font_installed = await invoke<boolean>('check_segoe_fluent_icons_font');
+  if (!is_segoe_fluent_icons_font_installed) {
+    current.value = t('正在安装 Segoe Fluent Icons 字体……');
+    try {
+      await invoke('install_segoe_fluent_icons_font');
+    } catch (e) {
+      await invoke('error_dialog', {
+        title: t('错误'),
+        message: t('安装 Segoe Fluent Icons 字体失败，请重试') + '\n\n' + e,
+      });
+      step.value = 1;
+      return;
+    }
+  }
   percent.value = 55;
+
   subStep.value = 2;
   current.value = t('正在部署包……');
   const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');

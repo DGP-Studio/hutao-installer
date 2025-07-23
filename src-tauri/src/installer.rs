@@ -1,3 +1,4 @@
+use crate::utils::windows_version::get_windows_version;
 use crate::{
     REQUEST_CLIENT, capture_and_return_err_message_string,
     cli::arg::UpdateArgs,
@@ -15,12 +16,23 @@ use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use tokio::io::AsyncWriteExt;
+use windows::{
+    Win32::{
+        Foundation::LPARAM,
+        Graphics::Gdi::{
+            AddFontResourceW, DEFAULT_CHARSET, EnumFontFamiliesExW, GetDC, HDC, LF_FACESIZE,
+            LOGFONTW, ReleaseDC, TEXTMETRICW,
+        },
+    },
+    core::{HSTRING, PCWSTR},
+};
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 use winsafe::{
     CoCreateInstance, IPersistFile, IShellLink,
     co::{CLSCTX, CLSID, SW},
     prelude::{ole_IPersistFile, ole_IUnknown, shell_IShellLink},
 };
+use zip::ZipArchive;
 
 #[cfg(feature = "offline")]
 const OFFLINE_PACKAGE_PAYLOAD: &[u8] = include_bytes!("../Snap.Hutao.msix");
@@ -619,6 +631,157 @@ pub async fn check_globalsign_r45(window: WebviewWindow) -> Result<(), String> {
             install_res.err()
         ));
     }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_segoe_fluent_icons_font() -> Result<bool, String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Checking Segoe Fluent Icons font".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+
+    let win_ver = get_windows_version();
+    if win_ver.build >= 22000 {
+        // Windows 11 and later have Segoe Fluent Icons font pre-installed
+        return Ok(true);
+    }
+
+    let font_name = "Segoe Fluent Icons";
+
+    let mut logfont = LOGFONTW {
+        lfCharSet: DEFAULT_CHARSET,
+        ..Default::default()
+    };
+
+    let name_utf16: Vec<u16> = font_name.encode_utf16().collect();
+    for (i, &c) in name_utf16.iter().enumerate() {
+        if i >= LF_FACESIZE as usize {
+            break;
+        }
+        logfont.lfFaceName[i] = c;
+    }
+
+    let mut found = false;
+
+    extern "system" fn enum_font_proc(
+        _lpelfe: *const LOGFONTW,
+        _lpntme: *const TEXTMETRICW,
+        _font_type: u32,
+        l_param: LPARAM,
+    ) -> i32 {
+        unsafe {
+            let found = &mut *(l_param.0 as *mut bool);
+            *found = true;
+        }
+        0
+    }
+
+    unsafe {
+        let hdc: HDC = GetDC(None);
+        EnumFontFamiliesExW(
+            hdc,
+            &logfont,
+            Some(enum_font_proc),
+            LPARAM(&mut found as *mut _ as isize),
+            0,
+        );
+        ReleaseDC(None, hdc);
+    }
+
+    Ok(found)
+}
+
+#[tauri::command]
+pub async fn install_segoe_fluent_icons_font() -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Installing Segoe Fluent Icons font".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+
+    let font_zip_download_url = "https://aka.ms/SegoeFluentIcons";
+
+    let font_zip_res = REQUEST_CLIENT.get(font_zip_download_url).send().await;
+    if font_zip_res.is_err() {
+        return Err(format!(
+            "Failed to download Segoe Fluent Icons font: {:?}",
+            font_zip_res.err()
+        ));
+    }
+    let font_zip_res = font_zip_res.unwrap();
+
+    let font_zip_bytes = font_zip_res.bytes().await;
+    if font_zip_bytes.is_err() {
+        return Err(format!(
+            "Failed to get Segoe Fluent Icons font content: {:?}",
+            font_zip_bytes.err()
+        ));
+    }
+    let font_zip_bytes = font_zip_bytes.unwrap();
+
+    let temp_dir = std::env::temp_dir();
+    let font_zip_path = temp_dir.as_path().join("SegoeFluentIcons.zip");
+
+    let write_res = tokio::fs::write(&font_zip_path, font_zip_bytes).await;
+    if write_res.is_err() {
+        return Err(format!(
+            "Failed to write Segoe Fluent Icons font zip: {:?}",
+            write_res.err()
+        ));
+    }
+
+    let font_dir = temp_dir.as_path().join("SegoeFluentIcons");
+    let font_dir_create_res = tokio::fs::create_dir_all(&font_dir).await;
+    if font_dir_create_res.is_err() {
+        return Err(format!(
+            "Failed to create Segoe Fluent Icons font dir: {:?}",
+            font_dir_create_res.err()
+        ));
+    }
+
+    let font_zip_file = tokio::fs::File::open(&font_zip_path).await;
+    if font_zip_file.is_err() {
+        return Err(format!(
+            "Failed to open Segoe Fluent Icons font zip: {:?}",
+            font_zip_file.err()
+        ));
+    }
+    let font_zip_file = font_zip_file.unwrap().try_into_std();
+    if font_zip_file.is_err() {
+        return Err(format!(
+            "Failed to convert Segoe Fluent Icons font zip to std: {:?}",
+            font_zip_file.err()
+        ));
+    }
+    let font_zip_file = font_zip_file.unwrap();
+
+    let zip_archive = ZipArchive::new(font_zip_file);
+    if zip_archive.is_err() {
+        return Err(format!(
+            "Failed to open Segoe Fluent Icons font zip: {:?}",
+            zip_archive.err()
+        ));
+    }
+    let mut zip_archive = zip_archive.unwrap();
+    let extract_res = zip_archive.extract(&font_dir);
+    if extract_res.is_err() {
+        return Err(format!(
+            "Failed to extract Segoe Fluent Icons font zip: {:?}",
+            extract_res.err()
+        ));
+    }
+
+    let font_file = font_dir.join("Segoe Fluent Icons.ttf");
+    let _ =
+        unsafe { AddFontResourceW(PCWSTR(HSTRING::from(font_file.to_str().unwrap()).as_ptr())) };
+
+    let _ = tokio::fs::remove_file(font_zip_path).await;
+    let _ = tokio::fs::remove_dir_all(font_dir).await;
 
     Ok(())
 }

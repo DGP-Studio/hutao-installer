@@ -14,25 +14,25 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.6.0",
+    "@tauri-apps/api": "^2.7.0",
     "uuid": "^11.1.0",
-    "vue": "^3.5.17",
-    "vue-i18n": "^11.1.7",
+    "vue": "^3.5.18",
+    "vue-i18n": "^11.1.11",
     "vue-markdown-render": "^2.2.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.30.0",
-    "@rsbuild/core": "^1.4.3",
-    "@rsbuild/plugin-node-polyfill": "^1.3.0",
+    "@eslint/js": "^9.31.0",
+    "@rsbuild/core": "^1.4.9",
+    "@rsbuild/plugin-node-polyfill": "^1.3.2",
     "@rsbuild/plugin-vue": "^1.1.0",
-    "@tauri-apps/cli": "^2.6.2",
+    "@tauri-apps/cli": "^2.7.1",
     "compression-webpack-plugin": "^11.1.0",
     "cross-env": "^7.0.3",
-    "eslint": "^9.30.0",
+    "eslint": "^9.31.0",
     "globals": "^16.3.0",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.35.1"
+    "typescript-eslint": "^8.38.0"
   },
-  "packageManager": "pnpm@10.12.4+sha256.cadfd9e6c9fcc2cb76fe7c0779a5250b632898aea5f53d833a73690c77a778d9"
+  "packageManager": "pnpm@10.13.1+sha256.0f9ed48d808996ae007835fb5c4641cf9a300def2eddc9e957d9bbe4768c5f28"
 }
