@@ -1,4 +1,3 @@
-use crate::utils::windows_version::get_windows_version;
 use crate::{
     REQUEST_CLIENT, capture_and_return_err_message_string,
     cli::arg::UpdateArgs,
@@ -7,38 +6,34 @@ use crate::{
         Version,
         cert::{find_certificate, install_certificate},
         dir::get_desktop,
+        font::{get_font_path, get_font_version, install_font_permanently},
         hash::run_sha256_file_hash_async,
         package_manager::{add_package, need_migration, remove_package, try_get_hutao_version},
         process::{self, is_process_running, is_process_running_by_pid, wait_for_pid},
+        windows_version::get_windows_version,
     },
 };
 use serde::Serialize;
 use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use tokio::io::AsyncWriteExt;
-use windows::{
-    Win32::{
-        Foundation::LPARAM,
-        Graphics::Gdi::{
-            AddFontResourceW, DEFAULT_CHARSET, EnumFontFamiliesExW, GetDC, HDC, LF_FACESIZE,
-            LOGFONTW, ReleaseDC, TEXTMETRICW,
-        },
-    },
-    core::{HSTRING, PCWSTR},
-};
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 use winsafe::{
     CoCreateInstance, IPersistFile, IShellLink,
     co::{CLSCTX, CLSID, SW},
     prelude::{ole_IPersistFile, ole_IUnknown, shell_IShellLink},
 };
-use zip::ZipArchive;
 
 #[cfg(feature = "offline")]
 const OFFLINE_PACKAGE_PAYLOAD: &[u8] = include_bytes!("../Snap.Hutao.msix");
 
 #[cfg(not(feature = "offline"))]
 const OFFLINE_PACKAGE_PAYLOAD: &[u8] = &[];
+
+const EMBEDDED_SEGOE_FLUENT_ICON_BINARY: &[u8] = include_bytes!("../SegoeIcons.ttf");
+const EMBEDDED_SEGOE_FLUENT_ICON_NAME: &str = "Segoe Fluent Icons (TrueType)";
+const EMBEDDED_SEGOE_FLUENT_ICON_FILENAME: &str = "SegoeIcons.ttf";
+const EMBEDDED_SEGOE_FLUENT_ICON_VERSION: Version = Version::new(1, 39, 0, 0);
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Config {
@@ -651,48 +646,31 @@ pub async fn check_segoe_fluent_icons_font() -> Result<bool, String> {
     }
 
     let font_name = "Segoe Fluent Icons";
-
-    let mut logfont = LOGFONTW {
-        lfCharSet: DEFAULT_CHARSET,
-        ..Default::default()
-    };
-
-    let name_utf16: Vec<u16> = font_name.encode_utf16().collect();
-    for (i, &c) in name_utf16.iter().enumerate() {
-        if i >= LF_FACESIZE as usize {
-            break;
-        }
-        logfont.lfFaceName[i] = c;
+    let font_path = get_font_path(font_name);
+    if font_path.is_none() {
+        return Ok(false);
     }
 
-    let mut found = false;
-
-    extern "system" fn enum_font_proc(
-        _lpelfe: *const LOGFONTW,
-        _lpntme: *const TEXTMETRICW,
-        _font_type: u32,
-        l_param: LPARAM,
-    ) -> i32 {
-        unsafe {
-            let found = &mut *(l_param.0 as *mut bool);
-            *found = true;
-        }
-        0
+    let font_path = font_path.unwrap();
+    let font_exists = tokio::fs::try_exists(&font_path).await.unwrap_or(false);
+    if !font_exists {
+        return Ok(false);
     }
 
-    unsafe {
-        let hdc: HDC = GetDC(None);
-        EnumFontFamiliesExW(
-            hdc,
-            &logfont,
-            Some(enum_font_proc),
-            LPARAM(&mut found as *mut _ as isize),
-            0,
-        );
-        ReleaseDC(None, hdc);
+    let font_raw_version = get_font_version(&font_path);
+    if font_raw_version.is_none() {
+        return Ok(false);
     }
 
-    Ok(found)
+    let font_raw_version = font_raw_version.unwrap();
+    let font_raw_version = font_raw_version[8..].to_string();
+    let font_version = Version::from_string(&font_raw_version);
+    if font_version.is_err() {
+        return Ok(false);
+    }
+
+    let font_version = font_version.unwrap();
+    Ok(font_version >= EMBEDDED_SEGOE_FLUENT_ICON_VERSION)
 }
 
 #[tauri::command]
@@ -704,85 +682,36 @@ pub async fn install_segoe_fluent_icons_font() -> Result<(), String> {
         ..Default::default()
     });
 
-    let font_zip_download_url = "https://aka.ms/SegoeFluentIcons";
-
-    let font_zip_res = REQUEST_CLIENT.get(font_zip_download_url).send().await;
-    if font_zip_res.is_err() {
-        return Err(format!(
-            "Failed to download Segoe Fluent Icons font: {:?}",
-            font_zip_res.err()
-        ));
-    }
-    let font_zip_res = font_zip_res.unwrap();
-
-    let font_zip_bytes = font_zip_res.bytes().await;
-    if font_zip_bytes.is_err() {
-        return Err(format!(
-            "Failed to get Segoe Fluent Icons font content: {:?}",
-            font_zip_bytes.err()
-        ));
-    }
-    let font_zip_bytes = font_zip_bytes.unwrap();
-
     let temp_dir = std::env::temp_dir();
-    let font_zip_path = temp_dir.as_path().join("SegoeFluentIcons.zip");
+    let font_file = temp_dir.join(EMBEDDED_SEGOE_FLUENT_ICON_FILENAME);
 
-    let write_res = tokio::fs::write(&font_zip_path, font_zip_bytes).await;
+    let file = tokio::fs::File::create(&font_file).await;
+    if file.is_err() {
+        capture_and_return_err_message_string!(format!(
+            "Failed to create font file: {:?}",
+            file.err()
+        ));
+    }
+
+    let mut file = file.unwrap();
+    let write_res = file.write_all(EMBEDDED_SEGOE_FLUENT_ICON_BINARY).await;
     if write_res.is_err() {
-        return Err(format!(
-            "Failed to write Segoe Fluent Icons font zip: {:?}",
+        capture_and_return_err_message_string!(format!(
+            "Failed to write font file: {:?}",
             write_res.err()
         ));
     }
 
-    let font_dir = temp_dir.as_path().join("SegoeFluentIcons");
-    let font_dir_create_res = tokio::fs::create_dir_all(&font_dir).await;
-    if font_dir_create_res.is_err() {
-        return Err(format!(
-            "Failed to create Segoe Fluent Icons font dir: {:?}",
-            font_dir_create_res.err()
+    let install_res =
+        install_font_permanently(font_file.to_str().unwrap(), EMBEDDED_SEGOE_FLUENT_ICON_NAME);
+    if install_res.is_err() {
+        capture_and_return_err_message_string!(format!(
+            "Failed to install font: {:?}",
+            install_res.err()
         ));
     }
 
-    let font_zip_file = tokio::fs::File::open(&font_zip_path).await;
-    if font_zip_file.is_err() {
-        return Err(format!(
-            "Failed to open Segoe Fluent Icons font zip: {:?}",
-            font_zip_file.err()
-        ));
-    }
-    let font_zip_file = font_zip_file.unwrap().try_into_std();
-    if font_zip_file.is_err() {
-        return Err(format!(
-            "Failed to convert Segoe Fluent Icons font zip to std: {:?}",
-            font_zip_file.err()
-        ));
-    }
-    let font_zip_file = font_zip_file.unwrap();
-
-    let zip_archive = ZipArchive::new(font_zip_file);
-    if zip_archive.is_err() {
-        return Err(format!(
-            "Failed to open Segoe Fluent Icons font zip: {:?}",
-            zip_archive.err()
-        ));
-    }
-    let mut zip_archive = zip_archive.unwrap();
-    let extract_res = zip_archive.extract(&font_dir);
-    if extract_res.is_err() {
-        return Err(format!(
-            "Failed to extract Segoe Fluent Icons font zip: {:?}",
-            extract_res.err()
-        ));
-    }
-
-    let font_file = font_dir.join("Segoe Fluent Icons.ttf");
-    let _ =
-        unsafe { AddFontResourceW(PCWSTR(HSTRING::from(font_file.to_str().unwrap()).as_ptr())) };
-
-    let _ = tokio::fs::remove_file(font_zip_path).await;
-    let _ = tokio::fs::remove_dir_all(font_dir).await;
-
+    let _ = tokio::fs::remove_file(font_file).await;
     Ok(())
 }
 

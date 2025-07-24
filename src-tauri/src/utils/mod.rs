@@ -1,6 +1,7 @@
 pub mod cert;
 pub mod device;
 pub mod dir;
+pub mod font;
 pub mod hash;
 pub mod package_manager;
 pub mod process;
@@ -114,7 +115,7 @@ impl Clone for Version {
 impl Copy for Version {}
 
 impl Version {
-    pub fn new(major: u64, minor: u64, build: u64, revision: u64) -> Self {
+    pub const fn new(major: u64, minor: u64, build: u64, revision: u64) -> Self {
         Self {
             major,
             minor,

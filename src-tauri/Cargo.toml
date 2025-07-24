@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags"]
 [package]
 name = "hutao-installer"
-version = "2.4.13"
+version = "2.4.14"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
@@ -79,7 +79,7 @@ winsafe = { version = "0.0.25", features = ["shell"] }
 sentry = "0.41"
 sentry-anyhow = "0.41"
 anyhow = "1"
-zip = "4"
+ttf-parser = "0.25"
 
 [[bin]]
 name = "hutao-installer"
