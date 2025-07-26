@@ -13,8 +13,9 @@ use crate::{
         windows_version::get_windows_version,
     },
 };
+use flate2::read::GzDecoder;
 use serde::Serialize;
-use std::{path::Path, time::Instant};
+use std::{io::Read, path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use tokio::io::AsyncWriteExt;
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
@@ -394,6 +395,17 @@ pub async fn extract_package() -> Result<(), String> {
     });
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+
+    let mut decoder = GzDecoder::new(OFFLINE_PACKAGE_PAYLOAD);
+    let mut decompressed_data = Vec::new();
+    let decompress_res = decoder.read_to_end(&mut decompressed_data);
+    if decompress_res.is_err() {
+        capture_and_return_err_message_string!(format!(
+            "Failed to decompress offline package: {:?}",
+            decompress_res.err()
+        ));
+    }
+
     let file = tokio::fs::File::create(installer_path).await;
     if file.is_err() {
         capture_and_return_err_message_string!(format!(
@@ -403,7 +415,7 @@ pub async fn extract_package() -> Result<(), String> {
     }
 
     let mut file = file.unwrap();
-    let write_res = file.write_all(OFFLINE_PACKAGE_PAYLOAD).await;
+    let write_res = file.write_all(&decompressed_data).await;
     if write_res.is_err() {
         capture_and_return_err_message_string!(format!(
             "Failed to write installer: {:?}",
@@ -685,6 +697,16 @@ pub async fn install_segoe_fluent_icons_font() -> Result<(), String> {
     let temp_dir = std::env::temp_dir();
     let font_file = temp_dir.join(EMBEDDED_SEGOE_FLUENT_ICON_FILENAME);
 
+    let mut decoder = GzDecoder::new(EMBEDDED_SEGOE_FLUENT_ICON_BINARY);
+    let mut decompressed_data = Vec::new();
+    let decompress_res = decoder.read_to_end(&mut decompressed_data);
+    if decompress_res.is_err() {
+        capture_and_return_err_message_string!(format!(
+            "Failed to decompress offline package: {:?}",
+            decompress_res.err()
+        ));
+    }
+
     let file = tokio::fs::File::create(&font_file).await;
     if file.is_err() {
         capture_and_return_err_message_string!(format!(
@@ -694,7 +716,7 @@ pub async fn install_segoe_fluent_icons_font() -> Result<(), String> {
     }
 
     let mut file = file.unwrap();
-    let write_res = file.write_all(EMBEDDED_SEGOE_FLUENT_ICON_BINARY).await;
+    let write_res = file.write_all(&decompressed_data).await;
     if write_res.is_err() {
         capture_and_return_err_message_string!(format!(
             "Failed to write font file: {:?}",

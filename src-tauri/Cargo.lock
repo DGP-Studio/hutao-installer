@@ -2164,6 +2164,7 @@ dependencies = [
  "chksum-sha2-256",
  "clap",
  "dark-light",
+    "flate2",
  "futures",
  "lazy_static",
  "num_cpus",

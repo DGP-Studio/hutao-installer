@@ -12,6 +12,7 @@ offline = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+flate2 = "1"
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -80,6 +81,7 @@ sentry = "0.41"
 sentry-anyhow = "0.41"
 anyhow = "1"
 ttf-parser = "0.25"
+flate2 = "1"
 
 [[bin]]
 name = "hutao-installer"
