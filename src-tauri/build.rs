@@ -51,17 +51,33 @@ fn main() {
 fn compress(file_name: &str) {
     #[cfg(not(debug_assertions))]
     {
+        let start_time = std::time::Instant::now();
         println!("cargo:warning=Compressing {}", file_name);
+
         let mut input = std::fs::File::open(file_name).unwrap();
         let mut input_bytes = Vec::new();
         input.read_to_end(&mut input_bytes).unwrap();
         drop(input);
 
+        let original_size = input_bytes.len();
+
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::best());
         encoder.write_all(&input_bytes).unwrap();
         let compressed = encoder.finish().unwrap();
 
+        let compressed_size = compressed.len();
+        let compression_ratio = (1.0 - (compressed_size as f64 / original_size as f64)) * 100.0;
+
         std::fs::write(file_name, compressed).unwrap();
-        println!("cargo:warning=Compressed {}", file_name);
+
+        let elapsed = start_time.elapsed();
+        println!(
+            "cargo:warning=Compressed {} ({} bytes -> {} bytes, {:.1}% reduction) in {:.2}ms",
+            file_name,
+            original_size,
+            compressed_size,
+            compression_ratio,
+            elapsed.as_secs_f64() * 1000.0
+        );
     }
 }
