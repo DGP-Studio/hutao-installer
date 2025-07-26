@@ -1,9 +1,13 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
-use windows::Win32::Graphics::Gdi::AddFontResourceW;
-use windows::Win32::UI::WindowsAndMessaging::{HWND_BROADCAST, SendMessageW, WM_FONTCHANGE};
-use windows::core::{HSTRING, PCWSTR};
+use windows::{
+    Win32::{
+        Graphics::Gdi::AddFontResourceW,
+        UI::WindowsAndMessaging::{HWND_BROADCAST, SendMessageW, WM_FONTCHANGE},
+    },
+    core::{HSTRING, PCWSTR},
+};
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 
 pub fn get_font_path(font_display_name: &str) -> Option<PathBuf> {
