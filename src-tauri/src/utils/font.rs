@@ -1,7 +1,9 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
+use windows::Win32::Graphics::Gdi::AddFontResourceW;
 use windows::Win32::UI::WindowsAndMessaging::{HWND_BROADCAST, SendMessageW, WM_FONTCHANGE};
+use windows::core::{HSTRING, PCWSTR};
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 
 pub fn get_font_path(font_display_name: &str) -> Option<PathBuf> {
@@ -82,6 +84,9 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     }
 
     unsafe {
+        AddFontResourceW(PCWSTR(
+            HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
+        ));
         SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
     }
 
