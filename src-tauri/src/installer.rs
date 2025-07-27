@@ -13,7 +13,6 @@ use crate::{
         windows_version::get_windows_version,
     },
 };
-use flate2::read::GzDecoder;
 use serde::Serialize;
 use std::{io::Read, path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
@@ -396,15 +395,14 @@ pub async fn extract_package() -> Result<(), String> {
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
 
-    let mut decoder = GzDecoder::new(OFFLINE_PACKAGE_PAYLOAD);
-    let mut decompressed_data = Vec::new();
-    let decompress_res = decoder.read_to_end(&mut decompressed_data);
-    if decompress_res.is_err() {
+    let decompressed_data = decompress(OFFLINE_PACKAGE_PAYLOAD);
+    if decompressed_data.is_err() {
         capture_and_return_err_message_string!(format!(
             "Failed to decompress offline package: {:?}",
-            decompress_res.err()
+            decompressed_data.err()
         ));
     }
+    let decompressed_data = decompressed_data?;
 
     let file = tokio::fs::File::create(installer_path).await;
     if file.is_err() {
@@ -697,15 +695,14 @@ pub async fn install_segoe_fluent_icons_font() -> Result<(), String> {
     let temp_dir = std::env::temp_dir();
     let font_file = temp_dir.join(EMBEDDED_SEGOE_FLUENT_ICON_FILENAME);
 
-    let mut decoder = GzDecoder::new(EMBEDDED_SEGOE_FLUENT_ICON_BINARY);
-    let mut decompressed_data = Vec::new();
-    let decompress_res = decoder.read_to_end(&mut decompressed_data);
-    if decompress_res.is_err() {
+    let decompressed_data = decompress(EMBEDDED_SEGOE_FLUENT_ICON_BINARY);
+    if decompressed_data.is_err() {
         capture_and_return_err_message_string!(format!(
-            "Failed to decompress offline package: {:?}",
-            decompress_res.err()
+            "Failed to decompress embedded font: {:?}",
+            decompressed_data.err()
         ));
     }
+    let decompressed_data = decompressed_data?;
 
     let file = tokio::fs::File::create(&font_file).await;
     if file.is_err() {
@@ -983,4 +980,27 @@ pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
     process::run(true, target, None::<&str>);
     app.exit(0);
+}
+
+fn decompress(data: &[u8]) -> Result<Vec<u8>, String> {
+    let mut decompressed_data = Vec::new();
+    #[cfg(debug_assertions)]
+    {
+        decompressed_data.extend_from_slice(data);
+        if decompressed_data.is_empty() {
+            return Err("Offline package payload is empty".to_string());
+        }
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let mut decoder = flate2::read::GzDecoder::new(data);
+        let decompress_res = decoder.read_to_end(&mut decompressed_data);
+        if decompress_res.is_err() {
+            return Err(format!(
+                "Failed to decompress data: {:?}",
+                decompress_res.err()
+            ));
+        }
+    }
+    Ok(decompressed_data)
 }
