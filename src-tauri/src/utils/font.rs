@@ -71,13 +71,26 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     let font_file_name = font_file_name.unwrap().to_str().unwrap();
     let target_path = Path::new(fonts_dir).join(font_file_name);
 
-    std::fs::copy(font_path, &target_path)?;
+    let copy_res = std::fs::copy(font_path, &target_path);
+    if copy_res.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to copy font file: {:?}",
+            copy_res.err()
+        ));
+    }
 
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let fonts_key = hklm.open_subkey_with_flags(
         r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
         winreg::enums::KEY_SET_VALUE,
-    )?;
+    );
+    if fonts_key.is_err() {
+        capture_and_return_err!(anyhow::anyhow!(
+            "Failed to open registry key: {:?}",
+            fonts_key.err()
+        ));
+    }
+    let fonts_key = fonts_key?;
 
     let set_result = fonts_key.set_value(font_name, &font_file_name);
     if set_result.is_err() {
