@@ -738,6 +738,51 @@ pub async fn install_segoe_fluent_icons_font() -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn check_win32_long_path_support() -> Result<(), String> {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("installer".to_string()),
+        message: Some("Checking Win32 long path support".to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    });
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let key = hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\FileSystem"#);
+    if key.is_err() {
+        return Err(format!("Failed to open registry key: {:?}", key.err()));
+    }
+    let key = key.unwrap();
+    let value = key.get_value::<u32, _>("LongPathsEnabled").unwrap_or(0);
+    if value == 0 {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("installer".to_string()),
+            message: Some("Enabling long path support".to_string()),
+            level: sentry::Level::Info,
+            ..Default::default()
+        });
+
+        let key = hklm.open_subkey_with_flags(
+            r#"SYSTEM\CurrentControlSet\Control\FileSystem"#,
+            winreg::enums::KEY_SET_VALUE,
+        );
+        if key.is_err() {
+            return Err(format!(
+                "Failed to open registry key for writing: {:?}",
+                key.err()
+            ));
+        }
+        let key = key.unwrap();
+        let set_value_res = key.set_value("LongPathsEnabled", &1u32);
+        if set_value_res.is_err() {
+            return Err(format!(
+                "Failed to set registry value: {:?}",
+                set_value_res.err()
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn is_hutao_running() -> Result<(bool, Option<u32>), String> {
     is_process_running(
         "Snap.Hutao.exe".to_string(),

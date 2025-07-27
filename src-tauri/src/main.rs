@@ -206,6 +206,7 @@ async fn tauri_main(args: Option<UpdateArgs>) {
             installer::check_globalsign_r45,
             installer::check_segoe_fluent_icons_font,
             installer::install_segoe_fluent_icons_font,
+            installer::check_win32_long_path_support,
             installer::is_hutao_running,
             installer::kill_process,
             installer::remove_outdated_package,

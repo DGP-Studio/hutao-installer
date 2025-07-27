@@ -63,6 +63,8 @@
   "正在检查 Segoe Fluent Icons 字体……": "正在检查 Segoe Fluent Icons 字体……",
   "正在安装 Segoe Fluent Icons 字体……": "正在安装 Segoe Fluent Icons 字体……",
   "安装 Segoe Fluent Icons 字体失败，请重试": "安装 Segoe Fluent Icons 字体失败，请重试",
+  "正在检查 Win32 长路径支持……": "正在检查 Win32 长路径支持……",
+  "检查 Win32 长路径支持失败，请重试": "检查 Win32 长路径支持失败，请重试",
   "正在部署包……": "正在部署包……",
   "提示": "提示",
   "检测到 Snap Hutao 正在运行，是否结束进程继续部署？": "检测到 Snap Hutao 正在运行，是否结束进程继续部署？",

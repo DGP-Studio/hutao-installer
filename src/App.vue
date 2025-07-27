@@ -1097,6 +1097,20 @@ async function install(): Promise<void> {
   }
   percent.value = 55;
 
+  current.value = t('正在检查 Win32 长路径支持……');
+  try {
+    await invoke('check_win32_long_path_support');
+  } catch (e) {
+    await invoke('error_dialog', {
+      title: t('错误'),
+      message: t('检查 Win32 长路径支持失败，请重试') + '\n\n' + e,
+    });
+    step.value = 1;
+    return;
+  }
+  percent.value = 60;
+
+
   subStep.value = 2;
   current.value = t('正在部署包……');
   const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
@@ -1155,7 +1169,7 @@ async function install(): Promise<void> {
     current.value = `
       <span class="d-single-stat">${t('部署进度')}: ${payload} %</span>
     `;
-    percent.value = 55 + payload * 0.44;
+    percent.value = 60 + payload * 0.39;
   });
   try {
     if (!await invoke<boolean>('install_package', { sha256: sha256, id: id, offlineMode: embedded_is_latest })) {
