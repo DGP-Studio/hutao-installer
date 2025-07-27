@@ -210,14 +210,26 @@ unsafe extern "system" fn singleton_window_proc<R: Runtime>(
                 if let Some(app) = &userdata.app {
                     let window = app.get_webview_window("main");
                     if let Some(window) = window {
-                        let hwnd = window.hwnd().unwrap();
-                        switch_to(HWND(hwnd.0 as _));
-                        sentry::add_breadcrumb(sentry::Breadcrumb {
-                            category: Some("singleton".into()),
-                            message: Some("Switch to webview window".into()),
-                            level: sentry::Level::Info,
-                            ..Default::default()
-                        });
+                        match window.hwnd() {
+                            Ok(hwnd) => {
+                                switch_to(HWND(hwnd.0 as _));
+                                sentry::add_breadcrumb(sentry::Breadcrumb {
+                                    category: Some("singleton".into()),
+                                    message: Some("Switch to webview window".into()),
+                                    level: sentry::Level::Info,
+                                    ..Default::default()
+                                });
+                            }
+                            Err(e) => {
+                                sentry::add_breadcrumb(sentry::Breadcrumb {
+                                    category: Some("singleton".into()),
+                                    message: Some(format!("Failed to get window handle: {}", e)),
+                                    level: sentry::Level::Error,
+                                    ..Default::default()
+                                });
+                                let _ = window.set_focus();
+                            }
+                        }
                     }
                 } else if let Some(hwnd) = *userdata.hwnd {
                     switch_to(HWND(hwnd.0 as _));
