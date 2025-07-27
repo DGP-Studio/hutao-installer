@@ -24,9 +24,9 @@ pub fn get_font_path(font_display_name: &str) -> Option<PathBuf> {
     for (name, value) in fonts.enum_values().flatten() {
         if name.starts_with(font_display_name) {
             let font_rel_path: String = value.to_string();
-            let system_fonts =
-                std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into()) + "\\Fonts\\";
-            return Some(PathBuf::from(system_fonts).join(font_rel_path));
+            let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
+            let system_fonts = Path::new(&windir).join("Fonts");
+            return Some(system_fonts.join(font_rel_path));
         }
     }
 
@@ -63,13 +63,15 @@ pub fn get_font_version(font_path: &PathBuf) -> Option<String> {
 }
 
 pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), anyhow::Error> {
-    let fonts_dir = r"C:\Windows\Fonts";
+    let win_dir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
+    let fonts_dir = Path::new(&win_dir).join("Fonts");
+
     let font_file_name = Path::new(font_path).file_name();
     if font_file_name.is_none() {
         capture_and_return_err!(anyhow::anyhow!("Invalid font file path: {}", font_path));
     }
     let font_file_name = font_file_name.unwrap().to_str().unwrap();
-    let target_path = Path::new(fonts_dir).join(font_file_name);
+    let target_path = fonts_dir.join(font_file_name);
 
     let copy_res = std::fs::copy(font_path, &target_path);
     if copy_res.is_err() {
