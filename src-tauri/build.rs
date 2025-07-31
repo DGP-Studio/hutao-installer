@@ -1,6 +1,3 @@
-#[cfg(not(debug_assertions))]
-use std::io::{Read, Write};
-
 fn main() {
     let build_mode = std::env::var("BUILD_MODE").unwrap_or_else(|_| "online".into());
     let embedded_version = std::env::var("EMBEDDED_VERSION").unwrap_or_else(|_| "".into());
@@ -51,6 +48,7 @@ fn main() {
 fn compress(file_name: &str) {
     #[cfg(not(debug_assertions))]
     {
+        use std::io::{Read, Write};
         let start_time = std::time::Instant::now();
         println!("cargo:warning=Compressing {}", file_name);
 

@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use serde::Serialize;
-use std::{io::Read, path::Path, time::Instant};
+use std::{path::Path, time::Instant};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
 use tokio::io::AsyncWriteExt;
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
@@ -998,6 +998,7 @@ fn decompress(data: &[u8]) -> Result<Vec<u8>, String> {
     }
     #[cfg(not(debug_assertions))]
     {
+        use std::io::Read;
         let mut decoder = flate2::read::GzDecoder::new(data);
         let decompress_res = decoder.read_to_end(&mut decompressed_data);
         if decompress_res.is_err() {

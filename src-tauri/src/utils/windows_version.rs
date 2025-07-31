@@ -2,8 +2,9 @@ use crate::{capture_and_return_default, utils::Version};
 use std::str::FromStr;
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 
-// Windows API 结构体和函数声明
+//noinspection SpellCheckingInspection
 #[repr(C)]
+#[allow(clippy::upper_case_acronyms)]
 struct OSVERSIONINFOW {
     dw_os_version_info_size: u32,
     dw_major_version: u32,
@@ -14,6 +15,7 @@ struct OSVERSIONINFOW {
 }
 
 extern "system" {
+    #[allow(non_snake_case)]
     fn RtlGetVersion(lpVersionInformation: *mut OSVERSIONINFOW) -> i32;
 }
 
