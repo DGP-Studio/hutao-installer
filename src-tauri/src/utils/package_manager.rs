@@ -271,7 +271,7 @@ pub fn add_package(
                 .set_level(rfd::MessageLevel::Error)
                 .show();
 
-            process::run(false, "ms-settings:developers", None::<&str>);
+            process::run(false, "ms-settings:developers", None::<&str>, None::<&str>);
             return Ok(false);
         } else if ex_code == HRESULT(0) {
             capture_and_return_err!(anyhow::anyhow!(

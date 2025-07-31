@@ -28,6 +28,11 @@ lazy_static::lazy_static! {
         .connect_timeout(std::time::Duration::from_secs(5))
         .build()
         .unwrap();
+
+    pub static ref REAL_CURRENT_DIR: std::path::PathBuf = {
+        // Get the current directory at the time of initialization
+        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+    };
 }
 
 fn ua_string() -> String {

@@ -1,5 +1,5 @@
 use crate::{
-    REQUEST_CLIENT, capture_and_return_err_message_string,
+    REAL_CURRENT_DIR, REQUEST_CLIENT, capture_and_return_err_message_string,
     cli::arg::UpdateArgs,
     fs::{create_http_stream, create_target_file, progressed_copy},
     utils::{
@@ -221,7 +221,12 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
             write_res.err()
         ));
     }
-    process::run(true, &exe_path, None::<&str>);
+    process::run(
+        true,
+        &exe_path,
+        REAL_CURRENT_DIR.clone().into(),
+        None::<&str>,
+    );
     app.exit(0);
 
     Ok(())
@@ -978,7 +983,7 @@ pub async fn exit(app: AppHandle) {
 #[tauri::command]
 pub async fn launch_and_exit(app: AppHandle) {
     let target = r#"shell:AppsFolder\60568DGPStudio.SnapHutao_wbnnev551gwxy!App"#.to_string();
-    process::run(true, target, None::<&str>);
+    process::run(true, target, REAL_CURRENT_DIR.clone().into(), None::<&str>);
     app.exit(0);
 }
 

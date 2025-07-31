@@ -27,8 +27,20 @@ use windows::{
     core::{HSTRING, PCWSTR, PWSTR, w},
 };
 
-pub fn run<S: AsRef<OsStr>, T: AsRef<OsStr>>(elevated: bool, program_path: S, args: Option<T>) {
+//noinspection DuplicatedCode
+pub fn run<P: AsRef<OsStr>, W: AsRef<OsStr>, A: AsRef<OsStr>>(
+    elevated: bool,
+    program_path: P,
+    working_dir: Option<W>,
+    args: Option<A>,
+) {
     let file = PCWSTR(HSTRING::from(program_path.as_ref()).as_ptr());
+    let dir = if let Some(dir) = working_dir {
+        PCWSTR(HSTRING::from(dir.as_ref()).as_ptr())
+    } else {
+        PCWSTR::null()
+    };
+
     let par = if let Some(args) = args {
         PCWSTR(HSTRING::from(args.as_ref()).as_ptr())
     } else {
@@ -41,6 +53,7 @@ pub fn run<S: AsRef<OsStr>, T: AsRef<OsStr>>(elevated: bool, program_path: S, ar
         lpVerb: if elevated { w!("runas") } else { w!("open") },
         lpFile: file,
         lpParameters: par,
+        lpDirectory: dir,
         nShow: 1,
         ..Default::default()
     };
