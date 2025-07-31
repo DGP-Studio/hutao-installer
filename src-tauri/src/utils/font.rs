@@ -1,6 +1,7 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
+use windows::Win32::Graphics::Gdi::RemoveFontResourceW;
 use windows::{
     Win32::{
         Graphics::Gdi::AddFontResourceW,
@@ -72,6 +73,13 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     }
     let font_file_name = font_file_name.unwrap().to_str().unwrap();
     let target_path = fonts_dir.join(font_file_name);
+
+    unsafe {
+        let _ = RemoveFontResourceW(PCWSTR(
+            HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
+        ));
+        SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
+    }
 
     let copy_res = std::fs::copy(font_path, &target_path);
     if copy_res.is_err() {
