@@ -160,6 +160,24 @@ async fn tauri_main(args: Option<UpdateArgs>) {
 
     // set cwd to temp dir
     let temp_dir = std::env::temp_dir();
+
+    // Canonicalize the temp directory to get the full absolute path
+    // This resolves any short path names (like %USERP~1) to their full form
+    let temp_dir = match std::fs::canonicalize(&temp_dir) {
+        Ok(canonical_path) => canonical_path,
+        Err(e) => {
+            rfd::MessageDialog::new()
+                .set_title("错误")
+                .set_description("无法解析临时文件夹路径")
+                .set_level(rfd::MessageLevel::Error)
+                .show();
+            capture_and_return!(anyhow::anyhow!(
+                "Failed to canonicalize temp dir: {:?}, error: {:?}",
+                temp_dir,
+                e
+            ));
+        }
+    };
     let res = std::env::set_current_dir(&temp_dir);
     if res.is_err() {
         rfd::MessageDialog::new()
