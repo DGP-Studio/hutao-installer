@@ -1,8 +1,43 @@
 use crate::{capture_and_return_default, utils::Version};
 use std::str::FromStr;
-use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
+
+// Windows API 结构体和函数声明
+#[repr(C)]
+struct OSVERSIONINFOW {
+    dw_os_version_info_size: u32,
+    dw_major_version: u32,
+    dw_minor_version: u32,
+    dw_build_number: u32,
+    dw_platform_id: u32,
+    sz_csd_version: [u16; 128],
+}
+
+extern "system" {
+    fn RtlGetVersion(lpVersionInformation: *mut OSVERSIONINFOW) -> i32;
+}
 
 pub fn get_windows_version() -> Version {
+    let mut version_info = OSVERSIONINFOW {
+        dw_os_version_info_size: size_of::<OSVERSIONINFOW>() as u32,
+        dw_major_version: 0,
+        dw_minor_version: 0,
+        dw_build_number: 0,
+        dw_platform_id: 0,
+        sz_csd_version: [0; 128],
+    };
+
+    let api_result = unsafe { RtlGetVersion(&mut version_info) };
+
+    if api_result == 0 && version_info.dw_major_version < 10 {
+        return Version::new(
+            version_info.dw_major_version as u64,
+            version_info.dw_minor_version as u64,
+            version_info.dw_build_number as u64,
+            0,
+        );
+    }
+
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = r#"SOFTWARE\Microsoft\Windows NT\CurrentVersion"#;
     let key = hklm.open_subkey(path);
