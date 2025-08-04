@@ -14,9 +14,19 @@ use crate::{
     },
 };
 use serde::Serialize;
-use std::{path::Path, time::Instant};
+use std::{
+    path::Path,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Instant,
+};
 use tauri::{AppHandle, Emitter, Runtime, State, WebviewWindow};
-use tokio::io::AsyncWriteExt;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    time::{Duration, timeout},
+};
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 use winsafe::{
     CoCreateInstance, IPersistFile, IShellLink,
@@ -327,16 +337,47 @@ pub async fn get_changelog(lang: String, from: String) -> Result<String, String>
 #[tauri::command]
 pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     let start = Instant::now();
-    let res = REQUEST_CLIENT
-        .get(&url)
-        .header("Range", "bytes=0-5242875")
-        .send()
-        .await;
-    let elapsed = start.elapsed().as_millis();
-    if res.is_err() {
+    let total_downloaded = Arc::new(AtomicU64::new(0));
+
+    let download_task = {
+        let total_downloaded = Arc::clone(&total_downloaded);
+        async move {
+            let res = REQUEST_CLIENT.get(&url).send().await;
+
+            if res.is_err() {
+                return Err("Failed to start download".to_string());
+            }
+
+            let res = res.unwrap();
+            let stream = futures::TryStreamExt::map_err(res.bytes_stream(), std::io::Error::other);
+            let mut reader = tokio_util::io::StreamReader::new(stream);
+
+            let mut buffer = [0u8; 32768]; // 32KB buffer
+            loop {
+                match reader.read(&mut buffer).await {
+                    Ok(0) => break, // End of stream
+                    Ok(n) => {
+                        total_downloaded.fetch_add(n as u64, Ordering::Relaxed);
+                    }
+                    Err(_) => break, // Error reading
+                }
+            }
+
+            Ok(())
+        }
+    };
+
+    let _ = timeout(Duration::from_secs(5), download_task).await;
+
+    let elapsed = start.elapsed().as_secs_f64();
+    let total_bytes = total_downloaded.load(Ordering::Relaxed);
+
+    if total_bytes == 0 {
         return Ok(-1.0);
     }
-    Ok(5.0 / ((elapsed as f64) / (1000f64)))
+
+    let speed_mbps = (total_bytes as f64) / elapsed / 1024.0 / 1024.0;
+    Ok(speed_mbps)
 }
 
 #[tauri::command]

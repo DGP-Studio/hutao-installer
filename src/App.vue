@@ -49,10 +49,10 @@
           </div>
           <div class="new-btn-container">
             <button :disabled="(!CONFIG.is_update && !acceptEula) || starting" class="btn new-btn" @click="start">
-              <span v-if="!starting">{{ t('开始') }}</span>
               <span v-if="starting" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
+              <span v-else>{{ t('开始') }}</span>
             </button>
           </div>
         </div>
@@ -83,10 +83,10 @@
               homaPassword.length === 0 ||
               logging_in
               " class="btn new-btn" @click="login">
-              <span v-if="!logging_in">{{ t('登录') }}</span>
               <span v-if="logging_in" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
+              <span v-else>{{ t('登录') }}</span>
             </button>
           </div>
         </div>
@@ -111,13 +111,13 @@
                      type="text" />
               <button :disabled="requestingVerifyCode || verifyCodeCooldown || !emailRegex.test(homaUsername)"
                       class="btn btn-req-verify-code" @click="requestVerifyCode">
-                <span v-if="!requestingVerifyCode && !verifyCodeCooldown">{{ t('获取') }}</span>
                 <span v-if="requestingVerifyCode" class="fui-Spinner__spinner">
                   <span class="fui-Spinner__spinnerTail" />
                 </span>
-                <span v-if="verifyCodeCooldown">
+                <span v-else-if="verifyCodeCooldown">
                   {{ t('获取: x', [verifyCodeCountdown]) }}
                 </span>
+                <span v-else>{{ t('获取') }}</span>
               </button>
             </div>
             <input v-model="homaPassword" :placeholder="t('密码')" aria-autocomplete="none" autocomplete="off"
@@ -137,10 +137,10 @@
               homaRedeemCode.length !== 18 ||
               registering
               " class="btn new-btn" @click="register">
-              <span v-if="!registering">{{ t('注册') }}</span>
               <span v-if="registering" class="fui-Spinner__spinner">
                 <span class="fui-Spinner__spinnerTail" />
               </span>
+              <span v-else>{{ t('注册') }}</span>
             </button>
           </div>
         </div>
@@ -156,16 +156,30 @@
                 <div class="left-indicator" />
                 <div class="mirror-item">
                   <span>{{ item.mirror_name }}</span>
-                  <span>
-                    {{
-                      item.mirror_type == 'browser'
-                        ? ''
-                        : item.speed == null
-                          ? t('测速中')
-                          : item.speed == -1
+                  <span v-if="item.mirror_type != 'browser'">
+                    <button
+                      v-if="item.speed != null"
+                      :title="t('点击重新测速')"
+                      class="speed-result-btn"
+                      @click="(e) => onSpeedResultClick(item, e)"
+                    >
+                      <span class="speed-text">
+                        {{
+                          item.speed == -1
                             ? 'timeout'
                             : `${item.speed?.toFixed(2)} MB/s`
-                    }}
+                        }}
+                      </span>
+                      <span class="refresh-icon">
+                        <svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                             stroke-width="2" viewBox="0 0 24 24" width="12">
+                          <path d="M23 4v6h-6"></path>
+                          <path d="M1 20v-6h6"></path>
+                          <path d="m3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                      </span>
+                    </button>
+                    <span v-else>{{ t('测速中') }}</span>
                   </span>
                 </div>
               </div>
@@ -615,6 +629,61 @@
   width: 100%;
   font-size: 14px;
   gap: 8px;
+}
+
+.speed-result-btn {
+  position: relative;
+  display: inline;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  vertical-align: baseline;
+}
+
+.speed-result-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin: -2px;
+  padding: 2px;
+}
+
+.speed-result-btn .speed-text {
+  transition: opacity 0.2s ease;
+  z-index: 1;
+}
+
+.speed-result-btn .refresh-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  font-size: 12px;
+  transition: opacity 0.2s ease;
+  background: transparent;
+  z-index: 2;
+}
+
+.speed-result-btn:hover .speed-text {
+  opacity: 0.3;
+}
+
+.speed-result-btn:hover .refresh-icon {
+  opacity: 1;
+  transform: translate(-50%, -50%);
 }
 </style>
 <style>
@@ -1225,6 +1294,19 @@ async function launch(): Promise<void> {
 
 function onItemClick(item: GenericPatchPackageMirror): void {
   selectedMirror.value = item;
+}
+
+async function onSpeedResultClick(item: GenericPatchPackageMirror, event: Event): Promise<void> {
+  event?.stopPropagation();
+
+  item.speed = null;
+  await invoke<number>('speedtest_5mb', { url: item.url }).then(
+    (s) => (item.speed = s),
+  );
+
+  mirrors.value = mirrors.value.sort(
+    (a, b) => (b.speed ?? -1) - (a.speed ?? -1),
+  );
 }
 
 async function testMirrorSpeed(): Promise<void> {
