@@ -336,11 +336,12 @@ pub async fn get_changelog(lang: String, from: String) -> Result<String, String>
 
 #[tauri::command]
 pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
-    let start = Instant::now();
     let total_downloaded = Arc::new(AtomicU64::new(0));
+    let download_start_time = Arc::new(std::sync::Mutex::new(Option::<Instant>::None));
 
     let download_task = {
         let total_downloaded = Arc::clone(&total_downloaded);
+        let download_start_time = Arc::clone(&download_start_time);
         async move {
             let res = REQUEST_CLIENT.get(&url).send().await;
 
@@ -357,6 +358,12 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
                 match reader.read(&mut buffer).await {
                     Ok(0) => break, // End of stream
                     Ok(n) => {
+                        if total_downloaded.load(Ordering::Relaxed) == 0 {
+                            let mut start_time = download_start_time.lock().unwrap();
+                            if start_time.is_none() {
+                                *start_time = Some(Instant::now());
+                            }
+                        }
                         total_downloaded.fetch_add(n as u64, Ordering::Relaxed);
                     }
                     Err(_) => break, // Error reading
@@ -369,13 +376,18 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
 
     let _ = timeout(Duration::from_secs(5), download_task).await;
 
-    let elapsed = start.elapsed().as_secs_f64();
     let total_bytes = total_downloaded.load(Ordering::Relaxed);
 
     if total_bytes == 0 {
         return Ok(-1.0);
     }
 
+    let start_time = download_start_time.lock().unwrap();
+    if start_time.is_none() {
+        return Ok(-1.0);
+    }
+
+    let elapsed = start_time.unwrap().elapsed().as_secs_f64();
     let speed_mbps = (total_bytes as f64) / elapsed / 1024.0 / 1024.0;
     Ok(speed_mbps)
 }
