@@ -354,8 +354,10 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
             let (mut reader, _) = stream_result.unwrap();
             let mut buffer = [0u8; 32768]; // 32KB buffer
 
-            let mut start_time = download_start_time.lock().unwrap();
-            *start_time = Some(Instant::now());
+            {
+                let mut start_time = download_start_time.lock().unwrap();
+                *start_time = Some(Instant::now());
+            }
 
             loop {
                 match reader.read(&mut buffer).await {
