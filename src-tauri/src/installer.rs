@@ -338,43 +338,48 @@ pub async fn get_changelog(lang: String, from: String) -> Result<String, String>
 pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     let total_downloaded = Arc::new(AtomicU64::new(0));
     let download_start_time = Arc::new(std::sync::Mutex::new(Option::<Instant>::None));
+    let download_end_time = Arc::new(std::sync::Mutex::new(Option::<Instant>::None));
 
     let download_task = {
         let total_downloaded = Arc::clone(&total_downloaded);
         let download_start_time = Arc::clone(&download_start_time);
+        let download_end_time = Arc::clone(&download_end_time);
+        let url = url.clone();
         async move {
-            let res = REQUEST_CLIENT.get(&url).send().await;
-
-            if res.is_err() {
-                return Err("Failed to start download".to_string());
+            let stream_result = create_http_stream(&url, 0, 0).await;
+            if stream_result.is_err() {
+                return Err("Failed to create HTTP stream".to_string());
             }
 
-            let res = res.unwrap();
-            let stream = futures::TryStreamExt::map_err(res.bytes_stream(), std::io::Error::other);
-            let mut reader = tokio_util::io::StreamReader::new(stream);
-
+            let (mut reader, _) = stream_result.unwrap();
             let mut buffer = [0u8; 32768]; // 32KB buffer
+
+            let mut start_time = download_start_time.lock().unwrap();
+            *start_time = Some(Instant::now());
+
             loop {
                 match reader.read(&mut buffer).await {
                     Ok(0) => break, // End of stream
                     Ok(n) => {
-                        if total_downloaded.load(Ordering::Relaxed) == 0 {
-                            let mut start_time = download_start_time.lock().unwrap();
-                            if start_time.is_none() {
-                                *start_time = Some(Instant::now());
-                            }
-                        }
                         total_downloaded.fetch_add(n as u64, Ordering::Relaxed);
                     }
                     Err(_) => break, // Error reading
                 }
             }
 
+            let mut end_time = download_end_time.lock().unwrap();
+            *end_time = Some(Instant::now());
+
             Ok(())
         }
     };
 
-    let _ = timeout(Duration::from_secs(5), download_task).await;
+    if let Err(_) = timeout(Duration::from_secs(5), download_task).await {
+        let mut end_time = download_end_time.lock().unwrap();
+        if end_time.is_none() {
+            *end_time = Some(Instant::now());
+        }
+    }
 
     let total_bytes = total_downloaded.load(Ordering::Relaxed);
 
@@ -383,11 +388,16 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     }
 
     let start_time = download_start_time.lock().unwrap();
+    let end_time = download_end_time.lock().unwrap();
+
     if start_time.is_none() {
         return Ok(-1.0);
     }
 
-    let elapsed = start_time.unwrap().elapsed().as_secs_f64();
+    let elapsed = end_time
+        .unwrap()
+        .duration_since(start_time.unwrap())
+        .as_secs_f64();
     let speed_mbps = (total_bytes as f64) / elapsed / 1024.0 / 1024.0;
     Ok(speed_mbps)
 }
