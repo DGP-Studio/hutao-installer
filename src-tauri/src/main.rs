@@ -18,6 +18,9 @@ use std::collections::BTreeMap;
 use tauri::{WindowEvent, window::Color};
 use tauri_utils::{WindowEffect, config::WindowEffectsConfig};
 use utils::{device::get_device_id, windows_version::get_windows_version};
+use windows::Win32::System::Threading::GetCurrentProcess;
+use windows::Win32::UI::HiDpi::GetSystemDpiForProcess;
+use winreg::{RegKey, enums::HKEY_CURRENT_USER};
 
 lazy_static::lazy_static! {
     pub static ref REQUEST_CLIENT: reqwest::Client = reqwest::Client::builder()
@@ -197,6 +200,21 @@ async fn tauri_main(args: Option<UpdateArgs>) {
         ));
     }
 
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let text_scale_factor_path = r#"Software\Microsoft\Accessibility"#.to_string();
+    let text_scale_factor_key = hkcu.open_subkey(&text_scale_factor_path).unwrap();
+    let text_scale_factor_value = text_scale_factor_key
+        .get_value("TextScaleFactor")
+        .unwrap_or(100u32);
+
+    let accessibility_text_scale_factor = text_scale_factor_value as f64 / 100.0;
+
+    let process_dpi = unsafe { GetSystemDpiForProcess(GetCurrentProcess()) };
+    let process_dpi = process_dpi as f64 / 96.0;
+
+    let target_width = 700.0 * accessibility_text_scale_factor * process_dpi;
+    let target_height = 400.0 * accessibility_text_scale_factor * process_dpi;
+
     tauri::Builder::default()
         .plugin(singleton::init_as_plugin())
         .invoke_handler(tauri::generate_handler![
@@ -250,8 +268,8 @@ async fn tauri_main(args: Option<UpdateArgs>) {
                 .resizable(true)
                 .maximizable(false)
                 .transparent(true)
-                .min_inner_size(700.0, 400.0)
-                .inner_size(700.0, 400.0)
+                .min_inner_size(target_width, target_height)
+                .inner_size(target_width, target_height)
                 .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required")
                 .center();
             if !cfg!(debug_assertions) {
