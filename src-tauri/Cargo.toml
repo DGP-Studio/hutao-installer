@@ -65,6 +65,7 @@ reqwest = { version = "0.12", default-features = false, features = [
     "charset",
     "gzip",
     "stream",
+    "system-proxy"
 ] }
 rfd = { version = "0.15", default-features = false, features = [
     "tokio",

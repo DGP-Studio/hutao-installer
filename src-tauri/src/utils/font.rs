@@ -1,11 +1,13 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
-use windows::Win32::Graphics::Gdi::RemoveFontResourceW;
 use windows::{
     Win32::{
-        Graphics::Gdi::AddFontResourceW,
-        UI::WindowsAndMessaging::{HWND_BROADCAST, SendMessageW, WM_FONTCHANGE},
+        Graphics::{Gdi::AddFontResourceW, Gdi::RemoveFontResourceW},
+        UI::{
+            WindowsAndMessaging::PostMessageW,
+            WindowsAndMessaging::{HWND_BROADCAST, WM_FONTCHANGE},
+        },
     },
     core::{HSTRING, PCWSTR},
 };
@@ -78,7 +80,7 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
         let _ = RemoveFontResourceW(PCWSTR(
             HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
         ));
-        SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
+        PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
     }
 
     let copy_res = std::fs::copy(font_path, &target_path);
@@ -114,7 +116,7 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
         AddFontResourceW(PCWSTR(
             HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
         ));
-        SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
+        PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
     }
 
     Ok(())

@@ -76,7 +76,6 @@ pub async fn progressed_copy(
             break;
         }
         downloaded += read;
-        // emit only every 16 ms
         if now.elapsed().as_millis() >= 20 {
             now = std::time::Instant::now();
             on_progress(downloaded);
@@ -89,7 +88,6 @@ pub async fn progressed_copy(
             ));
         }
     }
-    // flush the buffer
     let res = target.flush().await;
     if res.is_err() {
         return Err(anyhow::anyhow!(
@@ -97,7 +95,6 @@ pub async fn progressed_copy(
             res.err()
         ));
     }
-    // emit the final progress
     on_progress(downloaded);
     Ok(downloaded)
 }
@@ -156,7 +153,7 @@ async fn multi_threaded_download_impl(
             (i + 1) as u64 * chunk_size - 1
         };
 
-        let final_url = final_url.clone(); // 使用重定向后的最终URL
+        let final_url = final_url.clone();
         let shared_file = Arc::clone(&shared_file);
         let total_downloaded = Arc::clone(&total_downloaded);
         let progress_callback = Arc::clone(&progress_callback);
@@ -235,7 +232,7 @@ async fn download_chunk_with_retry(
     }
     let mut reader = reader?;
     let mut chunk_data = Vec::new();
-    let mut buffer = [0u8; 32768]; // 增大缓冲区到32KB
+    let mut buffer = [0u8; 32768];
     let mut last_progress_time = std::time::Instant::now();
 
     loop {

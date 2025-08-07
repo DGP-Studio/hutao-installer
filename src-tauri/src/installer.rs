@@ -176,7 +176,6 @@ pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, Str
         return Err(format!("Failed to check self update: {:?}", json.message));
     }
     let data = json.data.unwrap();
-    // remove last 2 chars
     let latest_ver = data.version;
     let latest_ver = Version::from_string(&latest_ver);
     if latest_ver.is_err() {
@@ -352,7 +351,7 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
             }
 
             let mut reader = reader.unwrap();
-            let mut buffer = [0u8; 32768]; // 32KB buffer
+            let mut buffer = [0u8; 32768];
 
             {
                 let mut start_time = download_start_time.lock().unwrap();
