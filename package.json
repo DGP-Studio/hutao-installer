@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@rsbuild/core": "^1.4.14",
+    "@rsbuild/core": "^1.4.15",
     "@rsbuild/plugin-node-polyfill": "^1.4.1",
     "@rsbuild/plugin-vue": "^1.1.1",
     "@tauri-apps/cli": "^2.7.1",
@@ -32,7 +32,7 @@
     "globals": "^16.3.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.38.0"
+    "typescript-eslint": "^8.39.0"
   },
   "packageManager": "pnpm@10.14.0+sha256.297534e65d5842450539c1e8022c8831ab5e1fe2eb74664787a815519542d620"
 }

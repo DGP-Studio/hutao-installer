@@ -1,7 +1,7 @@
 use crate::{
     REAL_CURRENT_DIR, REQUEST_CLIENT, capture_and_return_err_message_string,
     cli::arg::UpdateArgs,
-    fs::{create_http_stream, create_target_file, progressed_copy},
+    fs::create_http_stream,
     utils::{
         Version,
         cert::{find_certificate, install_certificate},
@@ -346,12 +346,12 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
         let download_end_time = Arc::clone(&download_end_time);
         let url = url.clone();
         async move {
-            let stream_result = create_http_stream(&url, 0, 0).await;
-            if stream_result.is_err() {
+            let reader = create_http_stream(&url, 0, 0).await;
+            if reader.is_err() {
                 return Err("Failed to create HTTP stream".to_string());
             }
 
-            let (mut reader, _) = stream_result.unwrap();
+            let mut reader = reader.unwrap();
             let mut buffer = [0u8; 32768]; // 32KB buffer
 
             {
@@ -376,7 +376,10 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
         }
     };
 
-    if timeout(Duration::from_secs(5), download_task).await.is_err() {
+    if timeout(Duration::from_secs(5), download_task)
+        .await
+        .is_err()
+    {
         let mut end_time = download_end_time.lock().unwrap();
         if end_time.is_none() {
             *end_time = Some(Instant::now());
@@ -507,30 +510,31 @@ pub async fn download_package(
     });
     let temp_dir = std::env::temp_dir();
     let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
-    let stream_res = create_http_stream(&mirror_url, 0, 0).await;
-    if stream_res.is_err() {
-        return Err(format!("Failed to download msix: {:?}", stream_res.err()));
-    }
-    let (mut stream, len) = stream_res.unwrap();
-    let target_file_create_res =
-        create_target_file(installer_path.as_os_str().to_str().unwrap()).await;
-    if target_file_create_res.is_err() {
-        capture_and_return_err_message_string!(format!(
-            "Failed to create target msix file: {:?}",
-            target_file_create_res.err()
+
+    let total_size = crate::fs::get_content_length(&mirror_url).await;
+    if total_size.is_err() {
+        return Err(format!(
+            "Failed to get content length: {:?}",
+            total_size.err()
         ));
     }
-    let mut target = target_file_create_res.unwrap();
+    let total_size = total_size.unwrap();
+
     let progress_noti = move |downloaded: usize| {
-        let _ = window.emit(&id, serde_json::json!((downloaded, len)));
+        let _ = window.emit(&id, serde_json::json!((downloaded, total_size)));
     };
-    let res = progressed_copy(&mut stream, &mut target, progress_noti).await;
+
+    let res = crate::fs::multi_threaded_download(
+        &mirror_url,
+        installer_path.as_os_str().to_str().unwrap(),
+        progress_noti,
+    )
+    .await;
+
     if res.is_err() {
         return Err(format!("Failed to download msix: {:?}", res.err()));
     }
-    // close streams
-    drop(stream);
-    drop(target);
+
     Ok(())
 }
 
@@ -586,32 +590,33 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
             ..Default::default()
         });
         let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
-        let stream_res = create_http_stream(url, 0, 0).await;
-        if stream_res.is_err() {
+
+        let total_size = crate::fs::get_content_length(url).await;
+        if total_size.is_err() {
+            return Err(format!(
+                "Failed to get vcrt content length: {:?}",
+                total_size.err()
+            ));
+        }
+        let total_size = total_size.unwrap();
+
+        let progress_noti = move |downloaded: usize| {
+            let _ = window.emit(&id, serde_json::json!((downloaded, total_size)));
+        };
+
+        let res = crate::fs::multi_threaded_download(
+            url,
+            installer_path.as_os_str().to_str().unwrap(),
+            progress_noti,
+        )
+        .await;
+
+        if res.is_err() {
             return Err(format!(
                 "Failed to download vcrt installer: {:?}",
-                stream_res.err()
+                res.err()
             ));
         }
-        let (mut stream, len) = stream_res.unwrap();
-        let target_file_create_res =
-            create_target_file(installer_path.as_os_str().to_str().unwrap()).await;
-        if target_file_create_res.is_err() {
-            capture_and_return_err_message_string!(format!(
-                "Failed to create target vcrt installer file: {:?}",
-                target_file_create_res.err()
-            ));
-        }
-        let mut target = target_file_create_res.unwrap();
-        let progress_noti = move |downloaded: usize| {
-            let _ = window.emit(&id, serde_json::json!((downloaded, len)));
-        };
-        progressed_copy(&mut stream, &mut target, progress_noti)
-            .await
-            .unwrap();
-        // close streams
-        drop(stream);
-        drop(target);
     }
 
     let id = if installer_running_status.0 {

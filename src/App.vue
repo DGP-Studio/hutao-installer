@@ -781,7 +781,6 @@ const verifyCodeCountdown = ref<number>(0);
 const registering = ref<boolean>(false);
 
 // Intervals
-let headingPackageInterval = 0;
 let progressInterval = 0;
 let verifyCodeInterval = 0;
 
@@ -1043,16 +1042,7 @@ async function install(): Promise<void> {
         return;
       }
       let total_downloaded_size = 0;
-      headingPackageInterval = setInterval(() => {
-        if (!isOversea) {
-          suggestOffline.value = true;
-        }
-
-        clearInterval(headingPackageInterval);
-      }, 5000);
-      const total_size = await invoke<number>('head_package', {
-        mirrorUrl: mirror_url,
-      });
+      let total_size = 0;
       let stat: InstallStat = {
         speedLastSize: 0,
         lastTime: performance.now(),
@@ -1060,7 +1050,6 @@ async function install(): Promise<void> {
         lowSpeedCount: 0,
       };
       progressInterval = setInterval(() => {
-        clearInterval(headingPackageInterval);
         const now = performance.now();
         const time_diff = now - stat.lastTime;
         if (time_diff > 500) {
@@ -1072,7 +1061,7 @@ async function install(): Promise<void> {
             stat.lowSpeedCount += 1;
           }
 
-          if (!isOversea && stat.lowSpeedCount > 10) {
+          if (!isOversea && stat.lowSpeedCount > 30) {
             suggestOffline.value = true;
           }
         }
@@ -1086,6 +1075,7 @@ async function install(): Promise<void> {
       let id = uuid();
       let unlisten = await listen<[number, number]>(id, ({ payload }) => {
         total_downloaded_size = payload[0];
+        total_size = payload[1];
       });
       try {
         await invoke('download_package', { mirrorUrl: mirror_url, id: id });

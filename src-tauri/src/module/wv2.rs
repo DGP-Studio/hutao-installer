@@ -1,5 +1,4 @@
 use crate::{
-    REQUEST_CLIENT,
     module::singleton::{self, SingletonState, UserData},
     utils::process::{is_process_running, wait_for_pid},
 };
@@ -147,41 +146,22 @@ pub async fn install_webview2(command: String) {
             level: sentry::Level::Info,
             ..Default::default()
         });
-        // use reqwest to download the installer
-        let res = REQUEST_CLIENT
-            .get("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
-            .send()
-            .await;
-        if let Err(e) = res {
+
+        // 使用多线程下载 WebView2 运行时，自动根据CPU线程数设置
+        let url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+        let download_result = crate::fs::multi_threaded_download(
+            url,
+            installer_path.to_str().unwrap(),
+            |_| {}, // 这里没有进度回调，因为是在对话框中
+        )
+        .await;
+
+        if let Err(e) = download_result {
             let hwnd = dialog_hwnd.take();
             unsafe {
                 SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
             }
             error_dialog(format!("WebView2 运行时下载失败: {e}"));
-            exit_and_release_mutex(0, &singleton_state);
-            return;
-        }
-        let res = res.unwrap();
-
-        let wv2_installer_blob = res.bytes().await;
-        if let Err(e) = wv2_installer_blob {
-            let hwnd = dialog_hwnd.take();
-            unsafe {
-                SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
-            }
-            error_dialog(format!("WebView2 运行时下载失败: {e}"));
-            exit_and_release_mutex(0, &singleton_state);
-            return;
-        }
-        let wv2_installer_blob = wv2_installer_blob.unwrap();
-
-        let write_res = tokio::fs::write(&installer_path, wv2_installer_blob).await;
-        if let Err(e) = write_res {
-            let hwnd = dialog_hwnd.take();
-            unsafe {
-                SendMessageW(hwnd.unwrap(), WM_CLOSE, Some(WPARAM(0)), Some(LPARAM(0)));
-            }
-            error_dialog(format!("WebView2 运行时安装程序写入失败: {e}"));
             exit_and_release_mutex(0, &singleton_state);
             return;
         }
