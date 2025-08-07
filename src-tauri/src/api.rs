@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 use crate::REQUEST_CLIENT;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct HomaDistributionGetAcceleratedMirrorResp {

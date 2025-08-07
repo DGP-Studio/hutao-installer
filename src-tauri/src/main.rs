@@ -8,18 +8,20 @@ pub mod installer;
 pub mod module;
 pub mod utils;
 
-use crate::utils::{Version, package_manager};
+use crate::{
+    cli::arg::{Command, UpdateArgs},
+    module::singleton,
+    utils::{
+        Version, device::get_device_id, package_manager, windows_version::get_windows_version,
+    },
+};
 use clap::Parser;
-use cli::arg::{Command, UpdateArgs};
-use module::singleton;
 use reqwest::header::{HeaderMap, HeaderValue};
 use sentry::protocol::Context;
 use std::collections::BTreeMap;
 use tauri::{WindowEvent, window::Color};
 use tauri_utils::{WindowEffect, config::WindowEffectsConfig};
-use utils::{device::get_device_id, windows_version::get_windows_version};
-use windows::Win32::System::Threading::GetCurrentProcess;
-use windows::Win32::UI::HiDpi::GetSystemDpiForProcess;
+use windows::Win32::{System::Threading::GetCurrentProcess, UI::HiDpi::GetSystemDpiForProcess};
 use winreg::{RegKey, enums::HKEY_CURRENT_USER};
 
 lazy_static::lazy_static! {

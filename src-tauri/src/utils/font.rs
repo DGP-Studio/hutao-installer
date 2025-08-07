@@ -1,14 +1,11 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
-use windows::Win32::Foundation::{LPARAM, WPARAM};
 use windows::{
     Win32::{
-        Graphics::{Gdi::AddFontResourceW, Gdi::RemoveFontResourceW},
-        UI::{
-            WindowsAndMessaging::PostMessageW,
-            WindowsAndMessaging::{HWND_BROADCAST, WM_FONTCHANGE},
-        },
+        Foundation::{LPARAM, WPARAM},
+        Graphics::Gdi::{AddFontResourceW, RemoveFontResourceW},
+        UI::WindowsAndMessaging::{HWND_BROADCAST, PostMessageW, WM_FONTCHANGE},
     },
     core::{HSTRING, PCWSTR},
 };

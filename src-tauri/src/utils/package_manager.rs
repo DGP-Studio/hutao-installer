@@ -1,10 +1,11 @@
 use crate::{
     capture_and_return, capture_and_return_default, capture_and_return_err, utils::process,
 };
-use windows::Management::Deployment::RemovalOptions;
 use windows::{
     Foundation::Uri,
-    Management::Deployment::{AddPackageOptions, DeploymentProgress, PackageManager},
+    Management::Deployment::{
+        AddPackageOptions, DeploymentProgress, PackageManager, RemovalOptions,
+    },
     core::{Error, HRESULT, HSTRING},
 };
 use windows_future::AsyncStatus;

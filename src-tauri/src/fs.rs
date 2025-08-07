@@ -1,10 +1,9 @@
+use crate::{REQUEST_CLIENT, capture_and_return_err};
 use std::sync::Arc;
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt},
     sync::Mutex,
 };
-
-use crate::{REQUEST_CLIENT, capture_and_return_err};
 
 pub async fn create_http_stream(
     url: &str,
