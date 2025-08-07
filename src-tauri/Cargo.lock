@@ -244,7 +244,7 @@ version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e231f6134f61b71076a3eab506c379d4f36122f2af15a9ff04415ea4c3339e2"
 dependencies = [
-    "windows-sys 0.60.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -255,7 +255,7 @@ checksum = "3e0633414522a32ffaac8ac6cc8f748e090c5717661fddeea04219e2344f5f2a"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
-    "windows-sys 0.60.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -765,7 +765,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "374b7c592d9c00c1f4972ea58390ac6b18cbb6ab79011f3bdc90a0b82ca06b77"
 dependencies = [
  "serde",
-    "toml 0.9.5",
+ "toml 0.9.5",
 ]
 
 [[package]]
@@ -1380,7 +1380,7 @@ dependencies = [
  "cc",
  "memchr",
  "rustc_version",
-    "toml 0.9.5",
+ "toml 0.9.5",
  "vswhom",
  "winreg 0.55.0",
 ]
@@ -4936,7 +4936,7 @@ checksum = "7c6d9028d41d4de835e3c482c677a8cb88137ac435d6ff9a71f392d4421576c9"
 dependencies = [
  "embed-resource",
  "indexmap 2.10.0",
-    "toml 0.9.5",
+ "toml 0.9.5",
 ]
 
 [[package]]

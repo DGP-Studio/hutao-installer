@@ -355,7 +355,7 @@
 
 .image {
   min-width: 300px;
-  width: 300px;
+  width: 42.5%;
   box-sizing: border-box;
   padding: 8px;
 
@@ -368,7 +368,7 @@
 
 .right {
   position: relative;
-  width: calc(100% - 280px);
+  width: 57.5%;
   text-align: left;
   display: flex;
   flex-direction: column;

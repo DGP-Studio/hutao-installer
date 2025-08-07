@@ -246,13 +246,14 @@ async fn tauri_main(args: Option<UpdateArgs>) {
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
-            .title(" ")
-            .resizable(false)
-            .maximizable(false)
-            .transparent(true)
+                .title(" ")
+                .resizable(true)
+                .maximizable(false)
+                .transparent(true)
+                .min_inner_size(700.0, 400.0)
                 .inner_size(700.0, 400.0)
-            .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required")
-            .center();
+                .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required")
+                .center();
             if !cfg!(debug_assertions) {
                 main_window = main_window.data_directory(temp_dir_for_data).visible(false);
             }
