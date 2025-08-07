@@ -1,12 +1,14 @@
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
-use tokio::sync::Mutex;
+use tokio::{
+    io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt},
+    sync::Mutex,
+};
 
 use crate::{REQUEST_CLIENT, capture_and_return_err};
 
 fn get_optimal_download_threads() -> usize {
     let cpu_threads = num_cpus::get();
-    cpu_threads.min(8).max(2)
+    cpu_threads.clamp(2, 8)
 }
 
 pub async fn create_http_stream(
@@ -104,7 +106,7 @@ pub async fn check_range_support(url: &str) -> Result<bool, anyhow::Error> {
     Ok(res
         .headers()
         .get("accept-ranges")
-        .map_or(false, |v| v == "bytes"))
+        .is_some_and(|v| v == "bytes"))
 }
 
 pub async fn get_content_length(url: &str) -> Result<u64, anyhow::Error> {
@@ -289,7 +291,7 @@ pub async fn multi_threaded_download_with_threads(
     chunk_count: usize,
     on_progress: impl Fn(usize) + Send + Sync + 'static,
 ) -> Result<usize, anyhow::Error> {
-    let chunk_count = chunk_count.min(8).max(1);
+    let chunk_count = chunk_count.clamp(2, 8);
 
     multi_threaded_download_impl(url, target, chunk_count, on_progress).await
 }
