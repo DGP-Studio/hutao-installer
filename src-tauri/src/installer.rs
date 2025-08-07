@@ -339,46 +339,187 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     let download_start_time = Arc::new(std::sync::Mutex::new(Option::<Instant>::None));
     let download_end_time = Arc::new(std::sync::Mutex::new(Option::<Instant>::None));
 
-    let download_task = {
+    let thread_count = num_cpus::get().clamp(2, 8);
+
+    let cancellation_token = tokio_util::sync::CancellationToken::new();
+
+    let total_timeout_task = {
+        let cancellation_token = cancellation_token.clone();
         let total_downloaded = Arc::clone(&total_downloaded);
         let download_start_time = Arc::clone(&download_start_time);
         let download_end_time = Arc::clone(&download_end_time);
-        let url = url.clone();
+
         async move {
-            let reader = create_http_stream(&url, 0, 0).await;
-            if reader.is_err() {
-                return Err("Failed to create HTTP stream".to_string());
+            let mut connection_tasks = Vec::new();
+
+            for _i in 0..thread_count {
+                let url = url.clone();
+                let cancellation_token = cancellation_token.clone();
+
+                let task = tokio::spawn(async move {
+                    if cancellation_token.is_cancelled() {
+                        return Err("Operation cancelled".to_string());
+                    }
+
+                    const MAX_RETRIES: u32 = 3;
+                    let mut last_error = String::new();
+
+                    for attempt in 1..=MAX_RETRIES {
+                        if cancellation_token.is_cancelled() {
+                            return Err("Operation cancelled".to_string());
+                        }
+
+                        match create_http_stream(&url, 0, 0).await {
+                            Ok(stream) => return Ok(stream),
+                            Err(e) => {
+                                last_error = format!("Attempt {}/{}: {}", attempt, MAX_RETRIES, e);
+
+                                // 如果不是最后一次尝试，等待后重试
+                                if attempt < MAX_RETRIES {
+                                    // 指数退避：第一次重试等待100ms，第二次等待200ms
+                                    let delay = Duration::from_millis(100 * attempt as u64);
+                                    tokio::select! {
+                                        _ = tokio::time::sleep(delay) => {}
+                                        _ = cancellation_token.cancelled() => {
+                                            return Err("Operation cancelled".to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Err(format!(
+                        "Failed to create HTTP stream after {} attempts. Last error: {}",
+                        MAX_RETRIES, last_error
+                    ))
+                });
+
+                connection_tasks.push(task);
             }
 
-            let mut reader = reader.unwrap();
-            let mut buffer = [0u8; 32768];
+            let mut readers = Vec::new();
+            for task in connection_tasks {
+                tokio::select! {
+                    result = task => {
+                        match result {
+                            Ok(Ok(reader)) => readers.push(reader),
+                            Ok(Err(e)) => return Err(e),
+                            Err(_) => return Err("Connection task was cancelled".to_string()),
+                        }
+                    }
+                    _ = cancellation_token.cancelled() => {
+                        return Err("Operation cancelled".to_string());
+                    }
+                }
+            }
 
             {
                 let mut start_time = download_start_time.lock().unwrap();
                 *start_time = Some(Instant::now());
             }
 
-            loop {
-                match reader.read(&mut buffer).await {
-                    Ok(0) => break, // End of stream
-                    Ok(n) => {
-                        total_downloaded.fetch_add(n as u64, Ordering::Relaxed);
+            let download_task = {
+                let total_downloaded = Arc::clone(&total_downloaded);
+                let download_end_time = Arc::clone(&download_end_time);
+                let cancellation_token = cancellation_token.clone();
+
+                async move {
+                    let mut tasks = Vec::new();
+
+                    for mut reader in readers {
+                        let total_downloaded = Arc::clone(&total_downloaded);
+                        let cancellation_token = cancellation_token.clone();
+
+                        let task = tokio::spawn(async move {
+                            let mut buffer = [0u8; 32768]; // 32KB buffer
+
+                            loop {
+                                tokio::select! {
+                                    read_result = reader.read(&mut buffer) => {
+                                        match read_result {
+                                            Ok(0) => break, // End of stream
+                                            Ok(n) => {
+                                                total_downloaded.fetch_add(n as u64, Ordering::Relaxed);
+                                            }
+                                            Err(_) => break, // Error reading
+                                        }
+                                    }
+                                    _ = cancellation_token.cancelled() => {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            Ok::<(), String>(())
+                        });
+
+                        tasks.push(task);
                     }
-                    Err(_) => break, // Error reading
+
+                    // 等待所有下载任务完成或取消
+                    let mut completed_tasks = Vec::new();
+                    for task in tasks {
+                        tokio::select! {
+                            result = task => {
+                                completed_tasks.push(result);
+                            }
+                            _ = cancellation_token.cancelled() => {
+                                // 取消所有剩余任务
+                                break;
+                            }
+                        }
+                    }
+
+                    let mut end_time = download_end_time.lock().unwrap();
+                    *end_time = Some(Instant::now());
+
+                    Ok::<(), String>(())
+                }
+            };
+
+            tokio::select! {
+                result = timeout(Duration::from_secs(5), download_task) => {
+                    if result.is_err() {
+                        cancellation_token.cancel();
+                        let mut end_time = download_end_time.lock().unwrap();
+                        if end_time.is_none() {
+                            *end_time = Some(Instant::now());
+                        }
+                    }
+                }
+                _ = cancellation_token.cancelled() => {
+                    let mut end_time = download_end_time.lock().unwrap();
+                    if end_time.is_none() {
+                        *end_time = Some(Instant::now());
+                    }
                 }
             }
 
-            let mut end_time = download_end_time.lock().unwrap();
-            *end_time = Some(Instant::now());
-
-            Ok(())
+            Ok::<(), String>(())
         }
     };
 
-    if timeout(Duration::from_secs(5), download_task)
-        .await
-        .is_err()
-    {
+    let timeout_result = tokio::select! {
+        result = timeout(Duration::from_secs(10), total_timeout_task) => result,
+        _ = tokio::time::sleep(Duration::from_secs(10)) => {
+            cancellation_token.cancel();
+            // 等待一小段时间让取消信号传播
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            // 返回超时错误 - 通过创建一个真实的超时来获取 Elapsed 错误
+            let timeout_result: Result<Result<(), String>, tokio::time::error::Elapsed> = timeout(Duration::from_millis(0), async {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+                Ok(())
+            }).await;
+            timeout_result
+        }
+    };
+
+    if timeout_result.is_err() {
+        cancellation_token.cancel();
+        // 确保取消信号有时间传播到所有任务
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
         let mut end_time = download_end_time.lock().unwrap();
         if end_time.is_none() {
             *end_time = Some(Instant::now());
@@ -394,7 +535,7 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
     let start_time = download_start_time.lock().unwrap();
     let end_time = download_end_time.lock().unwrap();
 
-    if start_time.is_none() {
+    if start_time.is_none() || end_time.is_none() {
         return Ok(-1.0);
     }
 

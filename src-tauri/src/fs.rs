@@ -6,11 +6,6 @@ use tokio::{
 
 use crate::{REQUEST_CLIENT, capture_and_return_err};
 
-fn get_optimal_download_threads() -> usize {
-    let cpu_threads = num_cpus::get();
-    cpu_threads.clamp(2, 8)
-}
-
 pub async fn create_http_stream(
     url: &str,
     offset: usize,
@@ -20,7 +15,6 @@ pub async fn create_http_stream(
     let has_range = offset > 0 || size > 0;
     if has_range {
         res = res.header("Range", format!("bytes={}-{}", offset, offset + size - 1));
-        println!("Range: bytes={}-{}", offset, offset + size - 1);
     }
     let res = res.send().await;
     if res.is_err() {
@@ -280,7 +274,7 @@ pub async fn multi_threaded_download(
         return single_threaded_download(url, target, on_progress).await;
     }
 
-    let chunk_count = get_optimal_download_threads();
+    let chunk_count = num_cpus::get().clamp(2, 8);
 
     multi_threaded_download_impl(url, target, chunk_count, on_progress).await
 }
