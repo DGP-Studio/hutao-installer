@@ -376,7 +376,7 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
         }
     };
 
-    if let Err(_) = timeout(Duration::from_secs(5), download_task).await {
+    if timeout(Duration::from_secs(5), download_task).await.is_err() {
         let mut end_time = download_end_time.lock().unwrap();
         if end_time.is_none() {
             *end_time = Some(Instant::now());
