@@ -374,9 +374,7 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
                             Err(e) => {
                                 last_error = format!("Attempt {}/{}: {}", attempt, MAX_RETRIES, e);
 
-                                // 如果不是最后一次尝试，等待后重试
                                 if attempt < MAX_RETRIES {
-                                    // 指数退避：第一次重试等待100ms，第二次等待200ms
                                     let delay = Duration::from_millis(100 * attempt as u64);
                                     tokio::select! {
                                         _ = tokio::time::sleep(delay) => {}
@@ -457,15 +455,12 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
                         tasks.push(task);
                     }
 
-                    // 等待所有下载任务完成或取消
-                    let mut completed_tasks = Vec::new();
                     for task in tasks {
                         tokio::select! {
-                            result = task => {
-                                completed_tasks.push(result);
+                            _ = task => {
+                                continue;
                             }
                             _ = cancellation_token.cancelled() => {
-                                // 取消所有剩余任务
                                 break;
                             }
                         }
@@ -500,26 +495,12 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
         }
     };
 
-    let timeout_result = tokio::select! {
-        result = timeout(Duration::from_secs(10), total_timeout_task) => result,
-        _ = tokio::time::sleep(Duration::from_secs(10)) => {
-            cancellation_token.cancel();
-            // 等待一小段时间让取消信号传播
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            // 返回超时错误 - 通过创建一个真实的超时来获取 Elapsed 错误
-            let timeout_result: Result<Result<(), String>, tokio::time::error::Elapsed> = timeout(Duration::from_millis(0), async {
-                tokio::time::sleep(Duration::from_millis(1)).await;
-                Ok(())
-            }).await;
-            timeout_result
-        }
-    };
-
-    if timeout_result.is_err() {
+    if timeout(Duration::from_secs(10), total_timeout_task)
+        .await
+        .is_err()
+    {
         cancellation_token.cancel();
-        // 确保取消信号有时间传播到所有任务
         tokio::time::sleep(Duration::from_millis(100)).await;
-
         let mut end_time = download_end_time.lock().unwrap();
         if end_time.is_none() {
             *end_time = Some(Instant::now());

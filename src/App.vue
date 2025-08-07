@@ -1050,11 +1050,16 @@ async function install(): Promise<void> {
         lowSpeedCount: 0,
       };
       progressInterval = setInterval(() => {
+        if (total_size == 0) {
+          current.value = t('正在连接……');
+          return;
+        }
         const now = performance.now();
         const time_diff = now - stat.lastTime;
         if (time_diff > 500) {
-          stat.speed = (total_downloaded_size - stat.speedLastSize) / time_diff;
-          stat.speedLastSize = total_downloaded_size;
+          const current_downloaded_size = total_downloaded_size;
+          stat.speed = (current_downloaded_size - stat.speedLastSize) / time_diff;
+          stat.speedLastSize = current_downloaded_size;
           stat.lastTime = now;
 
           if ((stat.speed * 1000) < (800 * 1000)) {
