@@ -82,9 +82,12 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
         )) {
             ref_times += 1;
             if ref_times > 30 {
-                capture_and_return_err!(anyhow::anyhow!(
-                    "Failed to remove existing font resource after multiple attempts."
-                ));
+                capture_and_return_default!(
+                    anyhow::anyhow!(
+                        "Failed to remove existing font resource after multiple attempts."
+                    ),
+                    Ok(())
+                );
             }
         }
 
