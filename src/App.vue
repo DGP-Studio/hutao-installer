@@ -1144,6 +1144,31 @@ async function install(): Promise<void> {
   }
   percent.value = 50;
 
+  const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
+  if (hutao_running_state[0]) {
+    if (await invoke<boolean>('confirm_dialog', {
+      'title': t('提示'),
+      'message': t('检测到 Snap Hutao 正在运行，是否结束进程继续部署？'),
+    })) {
+      try {
+        await invoke('kill_process', { 'pid': hutao_running_state[1] });
+      } catch (e) {
+        await invoke('message_dialog', {
+          'title': t('提示'),
+          'message': t('结束进程失败，请手动结束进程后再尝试部署' + '\n\n' + e),
+        });
+        step.value = 1;
+        subStep.value = 0;
+        return;
+      }
+    } else {
+      await invoke('message_dialog', { 'title': t('提示'), 'message': t('请手动结束进程后再尝试部署') });
+      step.value = 1;
+      subStep.value = 0;
+      return;
+    }
+  }
+
   current.value = t('正在检查 Segoe Fluent Icons 字体……');
   let is_segoe_fluent_icons_font_installed = await invoke<boolean>('check_segoe_fluent_icons_font');
   if (!is_segoe_fluent_icons_font_installed) {
@@ -1174,33 +1199,8 @@ async function install(): Promise<void> {
   }
   percent.value = 60;
 
-
   subStep.value = 2;
   current.value = t('正在部署包……');
-  const hutao_running_state = await invoke<[boolean, number?]>('is_hutao_running');
-  if (hutao_running_state[0]) {
-    if (await invoke<boolean>('confirm_dialog', {
-      'title': t('提示'),
-      'message': t('检测到 Snap Hutao 正在运行，是否结束进程继续部署？'),
-    })) {
-      try {
-        await invoke('kill_process', { 'pid': hutao_running_state[1] });
-      } catch (e) {
-        await invoke('message_dialog', {
-          'title': t('提示'),
-          'message': t('结束进程失败，请手动结束进程后再尝试部署' + '\n\n' + e),
-        });
-        step.value = 1;
-        subStep.value = 0;
-        return;
-      }
-    } else {
-      await invoke('message_dialog', { 'title': t('提示'), 'message': t('请手动结束进程后再尝试部署') });
-      step.value = 1;
-      subStep.value = 0;
-      return;
-    }
-  }
 
   if (CONFIG.need_migration) {
     if (await invoke<boolean>('confirm_dialog', {

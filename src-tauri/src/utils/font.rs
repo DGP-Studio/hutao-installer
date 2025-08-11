@@ -1,11 +1,12 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
+use windows::Win32::UI::WindowsAndMessaging::{SMTO_BLOCK, SendMessageTimeoutW};
 use windows::{
     Win32::{
         Foundation::{LPARAM, WPARAM},
         Graphics::Gdi::{AddFontResourceW, RemoveFontResourceW},
-        UI::WindowsAndMessaging::{HWND_BROADCAST, PostMessageW, WM_FONTCHANGE},
+        UI::WindowsAndMessaging::{HWND_BROADCAST, WM_FONTCHANGE},
     },
     core::{HSTRING, PCWSTR},
 };
@@ -74,15 +75,27 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     let font_file_name = font_file_name.unwrap().to_str().unwrap();
     let target_path = fonts_dir.join(font_file_name);
 
+    let mut ref_times = 0;
     unsafe {
-        let _ = RemoveFontResourceW(PCWSTR(
+        while RemoveFontResourceW(PCWSTR(
             HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
-        ));
-        let _ = PostMessageW(
-            Some(HWND_BROADCAST),
+        )) {
+            ref_times += 1;
+            if ref_times > 30 {
+                capture_and_return_err!(anyhow::anyhow!(
+                    "Failed to remove existing font resource after multiple attempts."
+                ));
+            }
+        }
+
+        let _ = SendMessageTimeoutW(
+            HWND_BROADCAST,
             WM_FONTCHANGE,
             WPARAM::default(),
             LPARAM::default(),
+            SMTO_BLOCK,
+            1000,
+            Some(std::ptr::null_mut()),
         );
     }
 
@@ -116,14 +129,24 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     }
 
     unsafe {
-        AddFontResourceW(PCWSTR(
-            HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
-        ));
-        let _ = PostMessageW(
-            Some(HWND_BROADCAST),
+        loop {
+            ref_times -= 1;
+            AddFontResourceW(PCWSTR(
+                HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
+            ));
+            if ref_times <= 0 {
+                break;
+            }
+        }
+
+        let _ = SendMessageTimeoutW(
+            HWND_BROADCAST,
             WM_FONTCHANGE,
             WPARAM::default(),
             LPARAM::default(),
+            SMTO_BLOCK,
+            1000,
+            Some(std::ptr::null_mut()),
         );
     }
 
