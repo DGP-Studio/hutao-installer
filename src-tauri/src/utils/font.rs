@@ -79,7 +79,9 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     unsafe {
         while RemoveFontResourceW(PCWSTR(
             HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
-        )) {
+        ))
+        .as_bool()
+        {
             ref_times += 1;
             if ref_times > 30 {
                 capture_and_return_default!(
