@@ -200,13 +200,6 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let outdated = exe_path.with_extension("old");
     let _ = tokio::fs::remove_file(&outdated).await;
 
-    let res = tokio::fs::rename(&exe_path, &outdated).await;
-    if let Err(e) = res {
-        if e.kind() != std::io::ErrorKind::NotFound {
-            capture_and_return_err_message_string!(format!("Failed to rename executable: {:?}", e));
-        }
-    }
-
     let res = REQUEST_CLIENT
         .get("https://api.qhy04.com/hutaocdn/deployment")
         .send()
@@ -223,13 +216,74 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         ));
     }
     let new_installer_blob = new_installer_blob.unwrap();
-    let write_res = tokio::fs::write(&exe_path, new_installer_blob).await;
-    if write_res.is_err() {
-        capture_and_return_err_message_string!(format!(
-            "Failed to write new installer: {:?}",
-            write_res.err()
-        ));
+
+    let mut rename_success = false;
+    let mut last_error = None;
+
+    for attempt in 1..=5 {
+        if attempt > 1 {
+            tokio::time::sleep(Duration::from_millis(100 * attempt as u64)).await;
+        }
+
+        match tokio::fs::rename(&exe_path, &outdated).await {
+            Ok(_) => {
+                rename_success = true;
+                break;
+            }
+            Err(e) => {
+                last_error = Some(e);
+                sentry::add_breadcrumb(sentry::Breadcrumb {
+                    category: Some("installer".to_string()),
+                    message: Some(format!("Rename attempt {} failed", attempt)),
+                    level: sentry::Level::Warning,
+                    ..Default::default()
+                });
+
+                if let Some(ref err) = last_error {
+                    if err.kind() == std::io::ErrorKind::NotFound {
+                        rename_success = true;
+                        break;
+                    }
+                }
+            }
+        }
     }
+
+    // 写入新的安装程序
+    if rename_success {
+        let write_res = tokio::fs::write(&exe_path, new_installer_blob).await;
+        if write_res.is_err() {
+            let _ = tokio::fs::rename(&outdated, &exe_path).await;
+            capture_and_return_err_message_string!(format!(
+                "Failed to write new installer: {:?}",
+                write_res.err()
+            ));
+        }
+    } else {
+        sentry::add_breadcrumb(sentry::Breadcrumb {
+            category: Some("installer".to_string()),
+            message: Some("Rename failed, attempting direct overwrite".to_string()),
+            level: sentry::Level::Warning,
+            ..Default::default()
+        });
+
+        let direct_write_res = tokio::fs::write(&exe_path, new_installer_blob).await;
+        if direct_write_res.is_err() {
+            if let Some(rename_err) = last_error {
+                capture_and_return_err_message_string!(format!(
+                    "Failed to rename executable (last attempt): {:?}. Direct overwrite also failed: {:?}",
+                    rename_err,
+                    direct_write_res.err()
+                ));
+            } else {
+                capture_and_return_err_message_string!(format!(
+                    "Failed to update executable: {:?}",
+                    direct_write_res.err()
+                ));
+            }
+        }
+    }
+
     process::run(
         true,
         &exe_path,
