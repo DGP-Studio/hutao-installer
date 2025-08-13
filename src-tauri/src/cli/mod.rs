@@ -15,16 +15,6 @@ impl Cli {
     }
 
     pub fn command_as_str(&self) -> String {
-        let command = self.command();
-        match command {
-            Command::Install => "install".to_string(),
-            Command::Update(args) => {
-                if let Some(token) = args.token {
-                    format!("update {token}")
-                } else {
-                    "update".to_string()
-                }
-            }
-        }
+        self.command().command_as_str().to_string()
     }
 }

@@ -12,3 +12,18 @@ pub enum Command {
     #[clap(hide = true)]
     Update(UpdateArgs),
 }
+
+impl Command {
+    pub fn command_as_str(&self) -> String {
+        match self {
+            Command::Install => "install".to_string(),
+            Command::Update(args) => {
+                if let Some(token) = &args.token {
+                    format!("update {token}")
+                } else {
+                    "update".to_string()
+                }
+            }
+        }
+    }
+}

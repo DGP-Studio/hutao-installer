@@ -1,6 +1,6 @@
 use crate::{
     REAL_CURRENT_DIR, REQUEST_CLIENT, capture_and_return_err_message_string,
-    cli::arg::UpdateArgs,
+    cli::arg::Command,
     fs::create_http_stream,
     utils::{
         Version,
@@ -189,7 +189,10 @@ pub async fn need_self_update<R: Runtime>(app: AppHandle<R>) -> Result<bool, Str
 }
 
 #[tauri::command]
-pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+pub async fn self_update<R: Runtime>(
+    args: State<'_, Command>,
+    app: AppHandle<R>,
+) -> Result<(), String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
         category: Some("installer".to_string()),
         message: Some("Self-updating".to_string()),
@@ -288,7 +291,7 @@ pub async fn self_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         true,
         &exe_path,
         REAL_CURRENT_DIR.clone().into(),
-        None::<&str>,
+        Some(args.inner().clone().command_as_str()),
     );
     app.exit(0);
 
@@ -312,7 +315,7 @@ pub async fn open_browser(url: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn get_config<R: Runtime>(
-    args: State<'_, Option<UpdateArgs>>,
+    args: State<'_, Command>,
     app: AppHandle<R>,
 ) -> Result<Config, String> {
     sentry::add_breadcrumb(sentry::Breadcrumb {
@@ -338,13 +341,13 @@ pub async fn get_config<R: Runtime>(
     let need_migration = need_migration();
     let exists = try_get_hutao_version();
 
-    let update_args = args.inner().clone();
-    if let Some(update_args) = update_args {
+    let command = args.inner().clone();
+    if let Command::Update(update_args) = command {
         return Ok(Config {
             version: curr_ver.to_string(),
             is_update: true,
             need_migration,
-            skip_self_update: true,
+            skip_self_update: false,
             is_offline_mode: false,
             embedded_version,
             curr_version: exists,

@@ -1,12 +1,11 @@
 use crate::{capture_and_return_default, capture_and_return_err};
 use std::path::{Path, PathBuf};
 use ttf_parser::Face;
-use windows::Win32::UI::WindowsAndMessaging::{SMTO_BLOCK, SendMessageTimeoutW};
 use windows::{
     Win32::{
         Foundation::{LPARAM, WPARAM},
         Graphics::Gdi::{AddFontResourceW, RemoveFontResourceW},
-        UI::WindowsAndMessaging::{HWND_BROADCAST, WM_FONTCHANGE},
+        UI::WindowsAndMessaging::{HWND_BROADCAST, SMTO_BLOCK, SendMessageTimeoutW, WM_FONTCHANGE},
     },
     core::{HSTRING, PCWSTR},
 };

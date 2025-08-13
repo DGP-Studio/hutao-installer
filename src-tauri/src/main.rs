@@ -127,25 +127,14 @@ fn main() {
         return;
     }
 
-    match command {
-        Command::Install => {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(tauri_main(None));
-        }
-        Command::Update(args) => {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(tauri_main(Some(args)));
-        }
-    }
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(tauri_main(command));
 }
 
-async fn tauri_main(args: Option<UpdateArgs>) {
+async fn tauri_main(args: Command) {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
     let win_ver = get_windows_version();
     let win10_22h2_ver = Version::new(10, 0, 19045, 5371);

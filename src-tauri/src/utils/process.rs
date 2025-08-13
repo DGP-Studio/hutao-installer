@@ -15,9 +15,7 @@ use windows::{
             },
         },
         UI::{
-            Shell::{
-                SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW,
-            },
+            Shell::{SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW},
             WindowsAndMessaging::{
                 DispatchMessageW, MsgWaitForMultipleObjects, PM_REMOVE, PeekMessageW, QS_ALLINPUT,
                 TranslateMessage,
@@ -49,7 +47,7 @@ pub fn run<P: AsRef<OsStr>, W: AsRef<OsStr>, A: AsRef<OsStr>>(
 
     let mut sei = SHELLEXECUTEINFOW {
         cbSize: size_of::<SHELLEXECUTEINFOW>() as u32,
-        fMask: SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS,
+        fMask: SEE_MASK_NOCLOSEPROCESS,
         lpVerb: if elevated { w!("runas") } else { w!("open") },
         lpFile: file,
         lpParameters: par,
