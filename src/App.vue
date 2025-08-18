@@ -1004,7 +1004,7 @@ async function openAfdianPage(): Promise<void> {
 }
 
 async function openOfflineDownloadPage(): Promise<void> {
-  await invoke('open_browser', { url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share/1e5419a0b7554f98a9b218cf4d735f4b-%E8%83%A1%E6%A1%83/e4be2335e57d4328b8caeb54aaff08e6-%E7%A6%BB%E7%BA%BF%E5%8C%85' });
+  await invoke('open_browser', { url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share/e4be2335e57d4328b8caeb54aaff08e6' });
 }
 
 async function openBrowserMirror(): Promise<void> {
@@ -1409,8 +1409,14 @@ onMounted(async () => {
 
   if (!isOversea) {
     mirrors.value.push({
-      url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share/1e5419a0b7554f98a9b218cf4d735f4b-%E8%83%A1%E6%A1%83/e4be2335e57d4328b8caeb54aaff08e6-%E7%A6%BB%E7%BA%BF%E5%8C%85',
+      url: 'https://pan.quark.cn/s/d73ceb415ad9#/list/share/e4be2335e57d4328b8caeb54aaff08e6',
       mirror_name: t('夸克网盘'),
+      mirror_type: 'browser',
+      speed: 0,
+    });
+    mirrors.value.push({
+      url: 'https://pan.baidu.com/s/1lpjoFinWNvKQfdct1Hb5ig?pwd=s687',
+      mirror_name: t('百度网盘'),
       mirror_type: 'browser',
       speed: 0,
     });

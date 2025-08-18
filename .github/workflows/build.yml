@@ -132,6 +132,7 @@ jobs:
     strategy:
       matrix:
         mode: [ online, offline ]
+        provider: [ '/qk', '/bd/胡桃' ]
     env:
       BUILD_MODE: ${{ matrix.mode }}
     steps:
@@ -144,10 +145,10 @@ jobs:
         run: |
           if [ "${{ env.BUILD_MODE }}" == "online" ]; then
             echo "FILENAME=online/Snap.Hutao.Deployment.exe" >> $GITHUB_OUTPUT
-            echo "TARGET_DIR=/qk" >> $GITHUB_OUTPUT
+            echo "TARGET_DIR=${{ matrix.provider }}" >> $GITHUB_OUTPUT
           else
             echo "FILENAME=$(ls offline/Snap.Hutao.Deployment.Embedded.*.exe)" >> $GITHUB_OUTPUT
-            echo "TARGET_DIR=/qk/离线包" >> $GITHUB_OUTPUT
+            echo "TARGET_DIR=${{ matrix.provider }}/离线包" >> $GITHUB_OUTPUT
           fi
       - name: upload
         uses: DGP-Automation/alist-uploader@v1
