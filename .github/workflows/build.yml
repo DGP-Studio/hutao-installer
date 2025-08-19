@@ -29,7 +29,7 @@ jobs:
           echo $toolchain
           echo "RUST_TOOLCHAIN=$toolchain" >> $env:GITHUB_ENV
           (Get-Content ./src-tauri/rust-toolchain.toml -Raw) -replace 'nightly', "$toolchain" | Set-Content ./src-tauri/rust-toolchain.toml -Encoding utf8
-      - run: rustup toolchain install nightly${{ vars.RUST_NIGHTLY_VER }} --profile minimal && rustup component add rust-src --toolchain nightly${{ vars.RUST_NIGHTLY_VER }}
+      - run: rustup toolchain install ${{ env.RUST_TOOLCHAIN }} --profile minimal && rustup component add rust-src --toolchain ${{ env.RUST_TOOLCHAIN }}
       - uses: Swatinem/rust-cache@v2
         with:
           cache-targets: false
