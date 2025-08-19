@@ -84,5 +84,6 @@
   "兑换码使用失败": "Redemption code usage failed",
   "注册成功，但是x": "Registration successful, but {0}",
   "登录失败": "Login failed",
-  "夸克网盘": "Quark Cloud"
+  "夸克网盘": "Quark Cloud",
+  "百度网盘": "Baidu Cloud"
 }

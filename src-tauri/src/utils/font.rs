@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use ttf_parser::Face;
 use windows::{
     Win32::{
-        Foundation::{LPARAM, WPARAM},
+        Foundation::{LPARAM, LRESULT, WPARAM},
         Graphics::Gdi::{AddFontResourceW, RemoveFontResourceW},
         UI::WindowsAndMessaging::{HWND_BROADCAST, SMTO_BLOCK, SendMessageTimeoutW, WM_FONTCHANGE},
     },
@@ -92,7 +92,7 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
             }
         }
 
-        let _ = SendMessageTimeoutW(
+        if SendMessageTimeoutW(
             HWND_BROADCAST,
             WM_FONTCHANGE,
             WPARAM::default(),
@@ -100,7 +100,15 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
             SMTO_BLOCK,
             1000,
             Some(std::ptr::null_mut()),
-        );
+        ) == LRESULT(0)
+        {
+            capture_and_return_default!(
+                anyhow::anyhow!(
+                    "Failed to send WM_FONTCHANGE message after removing font resource."
+                ),
+                Ok(())
+            );
+        }
     }
 
     let copy_res = std::fs::copy(font_path, &target_path);
@@ -143,7 +151,7 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
             }
         }
 
-        let _ = SendMessageTimeoutW(
+        if SendMessageTimeoutW(
             HWND_BROADCAST,
             WM_FONTCHANGE,
             WPARAM::default(),
@@ -151,7 +159,13 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
             SMTO_BLOCK,
             1000,
             Some(std::ptr::null_mut()),
-        );
+        ) == LRESULT(0)
+        {
+            capture_and_return_default!(
+                anyhow::anyhow!("Failed to send WM_FONTCHANGE message after adding font resource."),
+                Ok(())
+            );
+        }
     }
 
     Ok(())

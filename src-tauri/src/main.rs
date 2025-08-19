@@ -9,7 +9,7 @@ pub mod module;
 pub mod utils;
 
 use crate::{
-    cli::arg::{Command, UpdateArgs},
+    cli::arg::Command,
     module::singleton,
     utils::{
         Version, device::get_device_id, package_manager, windows_version::get_windows_version,
