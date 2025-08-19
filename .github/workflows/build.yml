@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - run: rustup toolchain install nightly${{ vars.RUST_NIGHTLY_VER }} --profile minimal && rustup component add rust-src --toolchain nightly
+      - run: rustup toolchain install nightly${{ vars.RUST_NIGHTLY_VER }} --profile minimal && rustup component add rust-src --toolchain nightly${{ vars.RUST_NIGHTLY_VER }}
       - uses: Swatinem/rust-cache@v2
         with:
           cache-targets: false
