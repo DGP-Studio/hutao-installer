@@ -23,6 +23,12 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      - name: Override Rust Toolchain
+        run: |
+          $toolchain = "nightly${{ vars.RUST_NIGHTLY_VER }}".Trim()
+          echo $toolchain
+          echo "RUST_TOOLCHAIN=$toolchain" >> $env:GITHUB_ENV
+          (Get-Content ./src-tauri/rust-toolchain.toml -Raw) -replace 'nightly', "$toolchain" | Set-Content ./src-tauri/rust-toolchain.toml -Encoding utf8
       - run: rustup toolchain install nightly${{ vars.RUST_NIGHTLY_VER }} --profile minimal && rustup component add rust-src --toolchain nightly${{ vars.RUST_NIGHTLY_VER }}
       - uses: Swatinem/rust-cache@v2
         with:
