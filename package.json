@@ -25,7 +25,7 @@
     "@rsbuild/core": "^1.4.15",
     "@rsbuild/plugin-node-polyfill": "^1.4.1",
     "@rsbuild/plugin-vue": "^1.1.1",
-    "@tauri-apps/cli": "^2.8.0",
+    "@tauri-apps/cli": "^2.8.1",
     "compression-webpack-plugin": "^11.1.0",
     "cross-env": "^7.0.3",
     "eslint": "^9.33.0",
@@ -34,5 +34,5 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.40.0"
   },
-  "packageManager": "pnpm@10.14.0+sha256.297534e65d5842450539c1e8022c8831ab5e1fe2eb74664787a815519542d620"
+  "packageManager": "pnpm@10.15.0+sha256.84c19e788d7d7ee248e4a6b7152f8ebba0f4fe7380a5f443ca17d76c030052d2"
 }
