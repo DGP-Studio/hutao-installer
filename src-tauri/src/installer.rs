@@ -287,6 +287,8 @@ pub async fn self_update<R: Runtime>(
         }
     }
 
+    crate::module::singleton::destroy_plugin(&app);
+
     process::run(
         true,
         &exe_path,
