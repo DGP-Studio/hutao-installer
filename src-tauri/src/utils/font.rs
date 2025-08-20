@@ -11,6 +11,78 @@ use windows::{
 };
 use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 
+struct FontResourceReloadState {
+    target_path: PathBuf,
+    ref_times: i32,
+    success: bool,
+}
+
+impl FontResourceReloadState {
+    fn new(target_path: PathBuf) -> Self {
+        let mut ref_times = 0;
+        let mut success = true;
+        unsafe {
+            while RemoveFontResourceW(PCWSTR(
+                HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
+            ))
+            .as_bool()
+            {
+                ref_times += 1;
+                if ref_times > 30 {
+                    success = false;
+                    break;
+                }
+            }
+        }
+        Self {
+            target_path,
+            ref_times,
+            success,
+        }
+    }
+
+    fn broadcast(&self, adding: bool) -> bool {
+        unsafe {
+            if SendMessageTimeoutW(
+                HWND_BROADCAST,
+                WM_FONTCHANGE,
+                WPARAM::default(),
+                LPARAM::default(),
+                SMTO_BLOCK,
+                1000,
+                Some(std::ptr::null_mut()),
+            ) == LRESULT(0)
+            {
+                let msg = if adding {
+                    "Failed to send WM_FONTCHANGE message after adding font resource."
+                } else {
+                    "Failed to send WM_FONTCHANGE message after removing font resource."
+                };
+                capture_and_return_default!(anyhow::anyhow!(msg), false);
+            }
+        }
+        true
+    }
+}
+
+impl Drop for FontResourceReloadState {
+    fn drop(&mut self) {
+        unsafe {
+            loop {
+                self.ref_times -= 1;
+                AddFontResourceW(PCWSTR(
+                    HSTRING::from(self.target_path.to_string_lossy().as_ref()).as_ptr(),
+                ));
+                if self.ref_times <= 0 {
+                    break;
+                }
+            }
+
+            self.broadcast(false);
+        }
+    }
+}
+
 pub fn get_font_path(font_display_name: &str) -> Option<PathBuf> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let fonts = hklm.open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts");
@@ -74,49 +146,24 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
     let font_file_name = font_file_name.unwrap().to_str().unwrap();
     let target_path = fonts_dir.join(font_file_name);
 
-    let mut ref_times = 0;
-    unsafe {
-        while RemoveFontResourceW(PCWSTR(
-            HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
-        ))
-        .as_bool()
-        {
-            ref_times += 1;
-            if ref_times > 30 {
-                capture_and_return_default!(
-                    anyhow::anyhow!(
-                        "Failed to remove existing font resource after multiple attempts."
-                    ),
-                    Ok(())
-                );
-            }
-        }
+    let reload_state = FontResourceReloadState::new(target_path.clone());
+    if !reload_state.success {
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to remove existing font resource after multiple attempts."),
+            Ok(())
+        );
+    }
 
-        if SendMessageTimeoutW(
-            HWND_BROADCAST,
-            WM_FONTCHANGE,
-            WPARAM::default(),
-            LPARAM::default(),
-            SMTO_BLOCK,
-            1000,
-            Some(std::ptr::null_mut()),
-        ) == LRESULT(0)
-        {
-            capture_and_return_default!(
-                anyhow::anyhow!(
-                    "Failed to send WM_FONTCHANGE message after removing font resource."
-                ),
-                Ok(())
-            );
-        }
+    if !reload_state.broadcast(true) {
+        return Ok(());
     }
 
     let copy_res = std::fs::copy(font_path, &target_path);
     if copy_res.is_err() {
-        capture_and_return_err!(anyhow::anyhow!(
-            "Failed to copy font file: {:?}",
-            copy_res.err()
-        ));
+        capture_and_return_default!(
+            anyhow::anyhow!("Failed to copy font file: {:?}", copy_res.err()),
+            Ok(())
+        );
     }
 
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
@@ -140,33 +187,7 @@ pub fn install_font_permanently(font_path: &str, font_name: &str) -> Result<(), 
         ));
     }
 
-    unsafe {
-        loop {
-            ref_times -= 1;
-            AddFontResourceW(PCWSTR(
-                HSTRING::from(target_path.to_string_lossy().as_ref()).as_ptr(),
-            ));
-            if ref_times <= 0 {
-                break;
-            }
-        }
-
-        if SendMessageTimeoutW(
-            HWND_BROADCAST,
-            WM_FONTCHANGE,
-            WPARAM::default(),
-            LPARAM::default(),
-            SMTO_BLOCK,
-            1000,
-            Some(std::ptr::null_mut()),
-        ) == LRESULT(0)
-        {
-            capture_and_return_default!(
-                anyhow::anyhow!("Failed to send WM_FONTCHANGE message after adding font resource."),
-                Ok(())
-            );
-        }
-    }
+    drop(reload_state);
 
     Ok(())
 }
