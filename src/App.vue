@@ -1414,12 +1414,6 @@ onMounted(async () => {
       mirror_type: 'browser',
       speed: 0,
     });
-    mirrors.value.push({
-      url: 'https://pan.baidu.com/s/1lpjoFinWNvKQfdct1Hb5ig?pwd=s687',
-      mirror_name: t('百度网盘'),
-      mirror_type: 'browser',
-      speed: 0,
-    });
   }
 
   if (config.is_update && config.curr_version) {

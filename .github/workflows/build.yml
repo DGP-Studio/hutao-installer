@@ -138,7 +138,7 @@ jobs:
     strategy:
       matrix:
         mode: [ online, offline ]
-        provider: [ '/qk', '/bd/胡桃' ]
+        provider: [ '/qk' ]
     env:
       BUILD_MODE: ${{ matrix.mode }}
     steps:
