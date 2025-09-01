@@ -136,7 +136,7 @@ pub async fn install_webview2(command: String) {
     }
 
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join("MicrosoftEdgeWebview2Setup.exe");
+    let installer_path = temp_dir.join("MicrosoftEdgeWebview2Setup.exe");
     let webview_installer_running_info =
         is_process_running("MicrosoftEdgeWebview2Setup.exe".to_string(), None).unwrap_or_default();
     if !webview_installer_running_info.0 {
