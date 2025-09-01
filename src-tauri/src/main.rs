@@ -36,7 +36,11 @@ lazy_static::lazy_static! {
 
     pub static ref REAL_CURRENT_DIR: std::path::PathBuf = {
         // Get the current directory at the time of initialization
-        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+        std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap_or(&std::path::Path::new("."))
+        .to_path_buf()
     };
 }
 
