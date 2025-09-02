@@ -590,7 +590,7 @@ pub async fn speedtest_5mb(url: String) -> Result<f64, String> {
 #[tauri::command]
 pub async fn check_temp_package_valid(sha256: String) -> Result<bool, String> {
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let installer_path = temp_dir.join("Snap.Hutao.msix");
     let exists = tokio::fs::try_exists(installer_path.clone()).await.unwrap();
     if !exists {
         return Ok(false);
@@ -646,7 +646,7 @@ pub async fn extract_package() -> Result<(), String> {
         ..Default::default()
     });
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let installer_path = temp_dir.join("Snap.Hutao.msix");
 
     let decompressed_data = decompress(OFFLINE_PACKAGE_PAYLOAD);
     if decompressed_data.is_err() {
@@ -689,7 +689,7 @@ pub async fn download_package(
         ..Default::default()
     });
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let installer_path = temp_dir.join("Snap.Hutao.msix");
 
     let total_size = crate::fs::get_content_length(&mirror_url).await;
     if total_size.is_err() {
@@ -758,7 +758,7 @@ pub async fn install_vcrt(id: String, window: WebviewWindow) -> Result<(), Strin
     const VCRT_INSTALLER_NAME: &str = "vc_redist.x64.exe";
 
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join(VCRT_INSTALLER_NAME);
+    let installer_path = temp_dir.join(VCRT_INSTALLER_NAME);
 
     let installer_running_status =
         is_process_running(VCRT_INSTALLER_NAME.to_string(), None).unwrap_or_default();
@@ -1117,7 +1117,7 @@ pub async fn install_package(
         ..Default::default()
     });
     let temp_dir = std::env::temp_dir();
-    let installer_path = temp_dir.as_path().join("Snap.Hutao.msix");
+    let installer_path = temp_dir.join("Snap.Hutao.msix");
     if !offline_mode {
         let hash = run_sha256_file_hash_async(installer_path.to_str().unwrap()).await;
         if hash.is_err() {
