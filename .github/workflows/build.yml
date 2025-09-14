@@ -136,6 +136,7 @@ jobs:
     needs: build
     if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event.inputs.only-offline == 'true') }}
     strategy:
+      fail-fast: false
       matrix:
         mode: [ online, offline ]
         provider: [ '/qk' ]
