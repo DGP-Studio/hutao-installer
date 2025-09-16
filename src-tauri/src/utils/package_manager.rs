@@ -227,7 +227,7 @@ pub fn add_package(
         },
     );
     let _ = op.SetProgress(&progress_sink);
-    let res = op.get();
+    let res = op.join();
     if res.is_err() {
         capture_and_return_err!(anyhow::anyhow!("Failed to get result: {:?}", res.err()));
     }
@@ -278,7 +278,7 @@ pub fn add_package(
             capture_and_return_err!(anyhow::anyhow!(
                 "Failed to add package: {:?}, HResult Last Error: {:?}",
                 err_text,
-                Error::from_win32()
+                Error::from_thread()
             ));
         }
 
@@ -364,7 +364,7 @@ pub fn remove_package(package_family_name: String) -> Result<(), anyhow::Error> 
     }
     let op = op?;
 
-    let res = op.get();
+    let res = op.join();
     if res.is_err() {
         capture_and_return_err!(anyhow::anyhow!("Failed to get result: {:?}", res.err()));
     }
@@ -402,7 +402,7 @@ pub fn remove_package(package_family_name: String) -> Result<(), anyhow::Error> 
             capture_and_return_err!(anyhow::anyhow!(
                 "Failed to remove package: {:?}, HResult Last Error: {:?}",
                 error_text,
-                Error::from_win32()
+                Error::from_thread()
             ));
         }
 

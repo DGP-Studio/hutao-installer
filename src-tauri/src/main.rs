@@ -21,7 +21,6 @@ use sentry::protocol::Context;
 use std::collections::BTreeMap;
 use tauri::{WindowEvent, window::Color};
 use tauri_utils::{WindowEffect, config::WindowEffectsConfig};
-use windows::Win32::{System::Threading::GetCurrentProcess, UI::HiDpi::GetSystemDpiForProcess};
 use winreg::{RegKey, enums::HKEY_CURRENT_USER};
 
 lazy_static::lazy_static! {
@@ -204,11 +203,8 @@ async fn tauri_main(args: Command) {
 
     let accessibility_text_scale_factor = text_scale_factor_value as f64 / 100.0;
 
-    let process_dpi = unsafe { GetSystemDpiForProcess(GetCurrentProcess()) };
-    let process_dpi = process_dpi as f64 / 96.0;
-
-    let target_width = 700.0 * accessibility_text_scale_factor * process_dpi;
-    let target_height = 400.0 * accessibility_text_scale_factor * process_dpi;
+    let target_width = 700.0 * accessibility_text_scale_factor;
+    let target_height = 400.0 * accessibility_text_scale_factor;
 
     tauri::Builder::default()
         .plugin(singleton::init_as_plugin())

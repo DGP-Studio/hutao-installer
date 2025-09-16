@@ -80,7 +80,7 @@ pub fn is_process_running(
         if snapshot.is_invalid() {
             capture_and_return_err_message_string!(format!(
                 "Failed to create snapshot: {:?}",
-                windows::core::Error::from_win32()
+                windows::core::Error::from_thread()
             ));
         }
         let mut entry: PROCESSENTRY32W = std::mem::zeroed();
@@ -190,7 +190,7 @@ pub fn wait_for_pid(pid: u32) -> Result<ExitStatus, anyhow::Error> {
             capture_and_return_err!(anyhow::anyhow!(
                 "Invalid handle for pid {}: {:?}",
                 pid,
-                windows::core::Error::from_win32()
+                windows::core::Error::from_thread()
             ));
         }
 

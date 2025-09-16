@@ -1,7 +1,7 @@
 use crate::capture_and_return_err;
 use std::ffi::CString;
 use tokio_util::bytes::Bytes;
-use windows::{core::s, Win32::Security::Cryptography::*};
+use windows::{Win32::Security::Cryptography::*, core::s};
 
 pub async fn find_certificate(subject: &str) -> Result<bool, anyhow::Error> {
     unsafe {
@@ -22,7 +22,7 @@ pub async fn find_certificate(subject: &str) -> Result<bool, anyhow::Error> {
         if h_store.is_invalid() {
             capture_and_return_err!(anyhow::anyhow!(
                 "Failed to open store: {:?}",
-                windows::core::Error::from_win32()
+                windows::core::Error::from_thread()
             ));
         }
 
@@ -79,7 +79,7 @@ pub async fn install_certificate(
         if h_store.is_invalid() {
             capture_and_return_err!(anyhow::anyhow!(
                 "Failed to open store: {:?}",
-                windows::core::Error::from_win32()
+                windows::core::Error::from_thread()
             ));
         }
 
@@ -87,7 +87,7 @@ pub async fn install_certificate(
         if cert.is_null() {
             capture_and_return_err!(anyhow::anyhow!(
                 "Failed to create certificate context: {:?}",
-                windows::core::Error::from_win32()
+                windows::core::Error::from_thread()
             ));
         }
 

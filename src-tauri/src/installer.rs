@@ -43,7 +43,7 @@ const OFFLINE_PACKAGE_PAYLOAD: &[u8] = &[];
 const EMBEDDED_SEGOE_FLUENT_ICON_BINARY: &[u8] = include_bytes!("../SegoeIcons.ttf");
 const EMBEDDED_SEGOE_FLUENT_ICON_NAME: &str = "Segoe Fluent Icons (TrueType)";
 const EMBEDDED_SEGOE_FLUENT_ICON_FILENAME: &str = "SegoeIcons.ttf";
-const EMBEDDED_SEGOE_FLUENT_ICON_VERSION: Version = Version::new(1, 42, 0, 0);
+const EMBEDDED_SEGOE_FLUENT_ICON_VERSION: Version = Version::new(1, 44, 0, 0);
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Config {

@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags"]
 [package]
 name = "hutao-installer"
-version = "2.5.10"
+version = "2.5.11"
 description = "Refreshed Snap Hutao Installer"
 authors = ["DGP-Studio"]
 edition = "2021"
@@ -19,7 +19,7 @@ tauri = { version = "2", features = [] }
 tauri-utils = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-windows = { version = "0.61", features = [
+windows = { version = "0.62", features = [
     "Win32_System_Console",
     "Win32_System_LibraryLoader",
     "Win32_UI",
@@ -42,7 +42,7 @@ windows = { version = "0.61", features = [
     "Win32_Graphics_Gdi",
     "Win32_UI_HiDpi"
 ] }
-windows-future = "0.2"
+windows-future = "0.3"
 tokio-util = { version = "0.7", features = ["io-util"] }
 tokio = { version = "1", features = [
     "rt",
