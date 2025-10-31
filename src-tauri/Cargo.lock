@@ -2175,7 +2175,7 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "hutao-installer"
-version = "2.5.11"
+version = "2.5.12"
 dependencies = [
  "anyhow",
  "chksum-md5",
