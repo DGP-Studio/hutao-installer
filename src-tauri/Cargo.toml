@@ -78,9 +78,9 @@ winreg = "0.55"
 futures = "0.3"
 whoami = "1"
 chksum-md5 = { version = "0.1", features = ["async-runtime-tokio"] }
-winsafe = { version = "0.0.25", features = ["shell"] }
-sentry = "0.42"
-sentry-anyhow = "0.42"
+winsafe = { version = "0.0.26", features = ["shell"] }
+sentry = "0.45"
+sentry-anyhow = "0.45"
 anyhow = "1"
 ttf-parser = "0.25"
 flate2 = "1"
